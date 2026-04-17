@@ -1,0 +1,50 @@
+server:
+    port: 9000
+
+spring:
+    application:
+        name: api-gateway
+    cloud:
+        gateway:
+            server:
+                webflux:
+                    discovery:
+                        locator:
+                            enabled: true
+                            lower-case-service-id: true
+                    globalcors:
+                        cors-configurations:
+                            "[/**]":
+                                allowedOrigins: "${FRONTEND_URL:http://localhost:5173}"
+                                allowedMethods: "*"
+                                allowedHeaders: "*"
+                    routes:
+                        - id: auth-service
+                          uri: lb://auth-service
+                          predicates:
+                              - Path=/api/v1/auth/**
+                        - id: openapi
+                          uri: lb://auth-service
+                          predicates:
+                              - Path=/v3/api-docs/**
+                        - id: project-service
+                          uri: lb://PROJECT-SERVICE
+                          predicates:
+                              - Path=/api/v1/projects/**
+
+eureka:
+    client:
+        service-url:
+            defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
+    instance:
+        prefer-ip-address: true
+
+# Expanded for Admin Server Monitoring
+management:
+    endpoints:
+        web:
+            exposure:
+                include: "health,info,gateway,metrics,env"
+    endpoint:
+        health:
+            show-details: always

@@ -1,0 +1,29 @@
+package com.authservice.service;
+
+import java.util.List;
+
+import com.authservice.entity.User;
+
+public interface AuthService {
+	User register(User user);
+
+	String login(String username, String password);
+
+	void logout(String token);
+
+	boolean validateToken(String token);
+
+	String refreshToken(String token);
+
+	User getUserByEmail(String email);
+
+	User getUserById(int userId);
+
+	User updateProfile(int userId, User user);
+
+	void changePassword(int userId, String newPassword);
+
+	List<User> searchUsers(String query);
+
+	void deactivateAccount(int userId);
+}
