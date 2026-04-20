@@ -15,36 +15,53 @@ spring:
                     globalcors:
                         cors-configurations:
                             "[/**]":
-                                allowedOrigins: "${FRONTEND_URL:http://localhost:5173}"
+                                allowedOrigins: "http://localhost:5173"
                                 allowedMethods: "*"
                                 allowedHeaders: "*"
-                    routes:
-                        - id: auth-service
-                          uri: lb://auth-service
-                          predicates:
-                              - Path=/api/v1/auth/**
-                        - id: openapi
-                          uri: lb://auth-service
-                          predicates:
-                              - Path=/v3/api-docs/**
-                        - id: project-service
-                          uri: lb://PROJECT-SERVICE
-                          predicates:
-                              - Path=/api/v1/projects/**
+                                allowCredentials: true # MANDATORY for OAuth2 Handshake
+            routes:
+                - id: auth-service
+                  uri: lb://auth-service
+                  predicates:
+                      - Path=/api/v1/auth/**
+                - id: project-service
+                  uri: lb://PROJECT-SERVICE
+                  predicates:
+                      - Path=/api/v1/projects/**
+                - id: auth-openapi
+                  uri: lb://auth-service
+                  predicates:
+                      - Path=/v3/api-docs/auth/**
+                  filters:
+                      - RewritePath=/v3/api-docs/auth/(?<segment>.*), /v3/api-docs/$\{segment}
+                - id: project-openapi
+                  uri: lb://PROJECT-SERVICE
+                  predicates:
+                      - Path=/v3/api-docs/projects/**
+                  filters:
+                      - RewritePath=/v3/api-docs/projects/(?<segment>.*), /v3/api-docs/$\{segment}
 
 eureka:
     client:
         service-url:
-            defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
+            defaultZone: http://localhost:8761/eureka/
     instance:
-        prefer-ip-address: true
+        prefer-ip-address: false
+        hostname: localhost
 
-# Expanded for Admin Server Monitoring
 management:
     endpoints:
         web:
             exposure:
-                include: "health,info,gateway,metrics,env"
+                include: "*"
     endpoint:
         health:
             show-details: always
+
+springdoc:
+    swagger-ui:
+        urls:
+            - name: "Auth Service"
+              url: "/v3/api-docs/auth"
+            - name: "Project Service"
+              url: "/v3/api-docs/projects"

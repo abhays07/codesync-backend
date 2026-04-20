@@ -46,7 +46,7 @@ public class AuthServiceImpl implements AuthService {
 
 	@Override
 	public List<User> searchUsers(String query) {
-		return userRepository.searchByUsername(query); // [cite: 234]
+		return userRepository.searchByUsername(query);
 	}
 
 	// Standard implementations for remaining interface methods per Class Diagram
@@ -70,15 +70,32 @@ public class AuthServiceImpl implements AuthService {
 	}
 
 	@Override
-	public User updateProfile(int userId, User user) {
-		/* Implementation logic */ return null;
+	public User getByUsername(String username) {
+		return userRepository.findByUsername(username).orElseThrow(() -> new RuntimeException("User not found"));
 	}
 
 	@Override
-	public void changePassword(int userId, String newPw) {
-		/* Implementation logic */ }
+	public User updateProfile(int userId, User userDetails) {
+		User user = getUserById(userId);
+		user.setFullName(userDetails.getFullName());
+		user.setBio(userDetails.getBio());
+		user.setAvatarUrl(userDetails.getAvatarUrl());
+		// Only update username if it's not taken (Standard industry check)
+		return userRepository.save(user);
+	}
+
+	@Override
+	public void changePassword(int userId, String newPassword) {
+		User user = getUserById(userId);
+		user.setPasswordHash(passwordEncoder.encode(newPassword));
+		userRepository.save(user);
+	}
 
 	@Override
 	public void deactivateAccount(int userId) {
-		/* Set isActive = false */ }
+		User user = getUserById(userId);
+		user.setActive(false); // Soft delete as per requirements [cite: 172, 189]
+		userRepository.save(user);
+	}
+
 }

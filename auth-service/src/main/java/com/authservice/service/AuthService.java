@@ -18,6 +18,8 @@ public interface AuthService {
 	User getUserByEmail(String email);
 
 	User getUserById(int userId);
+	
+	User getByUsername(String username);
 
 	User updateProfile(int userId, User user);
 
