@@ -61,4 +61,10 @@ public class ProjectResource {
 	public ResponseEntity<Project> fork(@PathVariable int id, @RequestParam int userId) {
 		return ResponseEntity.ok(projectService.forkProject(id, userId));
 	}
+
+	@GetMapping("/{id}")
+	public ResponseEntity<Project> getById(@PathVariable int id) {
+		// This provides the project data for the EditorPage
+		return ResponseEntity.ok(projectService.getProjectById(id));
+	}
 }

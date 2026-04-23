@@ -2,6 +2,8 @@ package com.projectservice.serviceImpl;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
 import com.projectservice.entity.Project;
 import com.projectservice.entity.ProjectStar;
 import com.projectservice.repository.ProjectRepository;
@@ -22,6 +24,9 @@ public class ProjectServiceImpl implements ProjectService {
 
 	@Autowired
 	private ProjectStarRepository starRepository;
+
+	@Autowired
+	private RestTemplate restTemplate;
 
 	/**
 	 * Populates the transient 'isStarredByMe' flag for UI consistency [cite: 243]
@@ -133,16 +138,37 @@ public class ProjectServiceImpl implements ProjectService {
 		if (!"PUBLIC".equals(source.getVisibility())) {
 			throw new RuntimeException("Only public projects can be forked.");
 		}
+
+		// 1. Prepare and save the metadata first to generate the new projectId
 		Project forked = new Project();
 		forked.setName(source.getName() + "-fork");
 		forked.setDescription("Forked from " + source.getName());
 		forked.setOwnerId(newOwnerId);
 		forked.setLanguage(source.getLanguage());
-		forked.setVisibility("PRIVATE");
+		forked.setVisibility("PRIVATE"); // Forks default to private
 		forked.setCreatedAt(LocalDateTime.now());
 		forked.setUpdatedAt(LocalDateTime.now());
+		forked.setArchived(false);
+
+		Project savedFork = projectRepository.save(forked);
+
+		// 2. Trigger the File-Service to deep-clone the filesystem
+		// Synchronous inter-service call using RestTemplate [cite: 764]
+		try {
+			String fileServiceUrl = "http://FILE-SERVICE/api/v1/files/clone?sourceId=" + sourceId + "&targetId="
+					+ savedFork.getProjectId();
+
+			restTemplate.postForEntity(fileServiceUrl, null, Void.class);
+
+		} catch (Exception e) {
+			// Log error but allow metadata to remain or throw to rollback @Transactional
+			throw new RuntimeException("File system cloning failed: " + e.getMessage());
+		}
+
+		// 3. Update original project metrics [cite: 243]
 		source.setForkCount(source.getForkCount() + 1);
 		projectRepository.save(source);
-		return projectRepository.save(forked);
+
+		return savedFork;
 	}
 }
