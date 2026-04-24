@@ -6,7 +6,6 @@ spring:
         name: api-gateway
     cloud:
         gateway:
-            # Fix: globalcors should be a direct child of gateway
             globalcors:
                 add-to-simple-url-handler-mapping: true
                 cors-configurations:
@@ -70,7 +69,7 @@ spring:
                   filters:
                       - "RewritePath=/v3/api-docs/sessions/(?<segment>.*), /v3/api-docs/${segment}"
 
-                # --- EXECUTION SERVICE (NEWly Added) ---
+                # --- EXECUTION SERVICE ---
                 - id: execution-service
                   uri: lb://execution-service
                   predicates:
@@ -83,6 +82,20 @@ spring:
                       - Path=/v3/api-docs/executions/**
                   filters:
                       - "RewritePath=/v3/api-docs/executions/(?<segment>.*), /v3/api-docs/${segment}"
+
+                # --- VERSION SERVICE (Added) ---
+                - id: version-service
+                  uri: lb://version-service
+                  predicates:
+                      - Path=/api/v1/versions/**
+                  filters:
+                      - "RewritePath=/api/v1/versions/(?<segment>.*), /${segment}"
+                - id: version-openapi
+                  uri: lb://version-service
+                  predicates:
+                      - Path=/v3/api-docs/versions/**
+                  filters:
+                      - "RewritePath=/v3/api-docs/versions/(?<segment>.*), /v3/api-docs/${segment}"
 
 eureka:
     client:
@@ -111,3 +124,5 @@ springdoc:
               url: "/v3/api-docs/sessions"
             - name: "Execution Service"
               url: "/v3/api-docs/executions"
+            - name: "Version Service"
+              url: "/v3/api-docs/versions"
