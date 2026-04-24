@@ -55,6 +55,19 @@ spring:
                       - Path=/v3/api-docs/files/**
                   filters:
                       - "RewritePath=/v3/api-docs/files/(?<segment>.*), /v3/api-docs/${segment}"
+                # --- COLLAB SERVICE ---
+                - id: collab-service
+                  uri: lb://collab-service
+                  predicates:
+                      - Path=/api/v1/sessions/**
+                  filters:
+                      - "RewritePath=/api/v1/sessions/(?<segment>.*), /${segment}"
+                - id: collab-openapi
+                  uri: lb://collab-service
+                  predicates:
+                      - Path=/v3/api-docs/sessions/**
+                  filters:
+                      - "RewritePath=/v3/api-docs/sessions/(?<segment>.*), /v3/api-docs/${segment}"
 
 eureka:
     client:
@@ -79,3 +92,5 @@ springdoc:
               url: "/v3/api-docs/projects"
             - name: "File Service"
               url: "/v3/api-docs/files"
+            - name: "Collab Service"
+              url: "/v3/api-docs/sessions"

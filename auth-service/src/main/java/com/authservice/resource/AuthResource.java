@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/auth") // Routed via API Gateway [cite: 16, 714]
+@RequestMapping("/api/v1/auth") // Routed via API Gateway
 public class AuthResource {
 
 	@Autowired

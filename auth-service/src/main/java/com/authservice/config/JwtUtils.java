@@ -15,7 +15,7 @@ public class JwtUtils {
     @Value("${JWT_SECRET}")
     private String jwtSecret;
 
-    // Injects the value from TOKEN_EXPIRY in your .env (defaulting to 24h if missing) [cite: 762]
+    // Injects the value from TOKEN_EXPIRY in your .env (defaulting to 24h if missing) 
     @Value("${TOKEN_EXPIRY:86400000}")
     private long tokenExpiry;
 

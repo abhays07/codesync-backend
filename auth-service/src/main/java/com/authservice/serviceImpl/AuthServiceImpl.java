@@ -33,7 +33,7 @@ public class AuthServiceImpl implements AuthService {
 		User user = userRepository.findByUsername(username).orElseThrow(() -> new RuntimeException("User not found"));
 
 		if (passwordEncoder.matches(password, user.getPasswordHash())) {
-			return jwtUtils.generateToken(username); // Requirement: JWT generation [cite: 234]
+			return jwtUtils.generateToken(username); // Requirement: JWT generation 
 		} else {
 			throw new RuntimeException("Invalid credentials");
 		}
@@ -94,7 +94,7 @@ public class AuthServiceImpl implements AuthService {
 	@Override
 	public void deactivateAccount(int userId) {
 		User user = getUserById(userId);
-		user.setActive(false); // Soft delete as per requirements [cite: 172, 189]
+		user.setActive(false); // Soft delete as per requirements 
 		userRepository.save(user);
 	}
 

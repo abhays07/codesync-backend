@@ -2,6 +2,7 @@ package com.projectservice.service;
 
 import java.util.List;
 import com.projectservice.entity.Project;
+import com.projectservice.entity.ProjectMember;
 
 public interface ProjectService {
 	Project createProject(Project project);
@@ -25,4 +26,14 @@ public interface ProjectService {
 	Project updateProject(int projectId, Project project);
 
 	void deleteProject(int projectId);
+
+	void requestCollaboration(int projectId, int userId, String username);
+
+	void approveCollaborator(int projectId, int userId);
+
+	boolean hasEditAccess(int projectId, int userId);
+
+	List<ProjectMember> getPendingRequests(int projectId);
+
+	List<ProjectMember> getProjectMembers(int projectId);
 }

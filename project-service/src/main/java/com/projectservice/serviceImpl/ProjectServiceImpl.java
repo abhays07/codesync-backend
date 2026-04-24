@@ -5,7 +5,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.projectservice.entity.Project;
+import com.projectservice.entity.ProjectMember;
 import com.projectservice.entity.ProjectStar;
+import com.projectservice.repository.ProjectMemberRepository;
 import com.projectservice.repository.ProjectRepository;
 import com.projectservice.repository.ProjectStarRepository;
 import com.projectservice.service.ProjectService;
@@ -28,8 +30,11 @@ public class ProjectServiceImpl implements ProjectService {
 	@Autowired
 	private RestTemplate restTemplate;
 
+	@Autowired
+	private ProjectMemberRepository memberRepository;
+
 	/**
-	 * Populates the transient 'isStarredByMe' flag for UI consistency [cite: 243]
+	 * Populates the transient 'isStarredByMe' flag for UI consistency
 	 */
 	// Inside ProjectServiceImpl.java
 
@@ -153,7 +158,7 @@ public class ProjectServiceImpl implements ProjectService {
 		Project savedFork = projectRepository.save(forked);
 
 		// 2. Trigger the File-Service to deep-clone the filesystem
-		// Synchronous inter-service call using RestTemplate [cite: 764]
+		// Synchronous inter-service call using RestTemplate
 		try {
 			String fileServiceUrl = "http://FILE-SERVICE/api/v1/files/clone?sourceId=" + sourceId + "&targetId="
 					+ savedFork.getProjectId();
@@ -165,10 +170,61 @@ public class ProjectServiceImpl implements ProjectService {
 			throw new RuntimeException("File system cloning failed: " + e.getMessage());
 		}
 
-		// 3. Update original project metrics [cite: 243]
+		// 3. Update original project metrics 
 		source.setForkCount(source.getForkCount() + 1);
 		projectRepository.save(source);
 
 		return savedFork;
+	}
+
+	@Override
+	public void requestCollaboration(int projectId, int userId, String username) {
+		// Check if already a member or owner
+		Project project = getProjectById(projectId);
+		if (project.getOwnerId() == userId)
+			return;
+
+		Optional<ProjectMember> existing = memberRepository.findByProjectIdAndUserId(projectId, userId);
+		if (existing.isEmpty()) {
+			ProjectMember request = new ProjectMember();
+			request.setProjectId(projectId);
+			request.setUserId(userId);
+			request.setUsername(username);
+			request.setRole("PENDING"); // Mark as pending for owner approval
+			memberRepository.save(request);
+
+			// TODO: In real-life, trigger a notification to the owner here
+		}
+	}
+
+	@Override
+	@Transactional
+	public void approveCollaborator(int projectId, int userId) {
+		ProjectMember member = memberRepository.findByProjectIdAndUserId(projectId, userId)
+				.orElseThrow(() -> new RuntimeException("Request not found"));
+		member.setRole("EDITOR");
+		memberRepository.save(member);
+	}
+
+	@Override
+	public List<ProjectMember> getPendingRequests(int projectId) {
+		return memberRepository.findByProjectId(projectId).stream().filter(m -> "PENDING".equals(m.getRole()))
+				.collect(Collectors.toList());
+	}
+
+	@Override
+	public boolean hasEditAccess(int projectId, int userId) {
+		Project project = projectRepository.findById(projectId).orElse(null);
+		if (project != null && project.getOwnerId() == userId)
+			return true;
+
+		return memberRepository.existsByProjectIdAndUserIdAndRole(projectId, userId, "EDITOR");
+	}
+
+	@Override
+	public List<ProjectMember> getProjectMembers(int projectId) {
+		// Fetches all members and filters for those with active access (EDITOR role)
+		return memberRepository.findByProjectId(projectId).stream().filter(m -> "EDITOR".equals(m.getRole()))
+				.collect(Collectors.toList());
 	}
 }
