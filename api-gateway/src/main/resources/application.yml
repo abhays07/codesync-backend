@@ -6,19 +6,19 @@ spring:
         name: api-gateway
     cloud:
         gateway:
-            server:
-                webflux:
-                    discovery:
-                        locator:
-                            enabled: true
-                            lower-case-service-id: true
-                    globalcors:
-                        cors-configurations:
-                            "[/**]":
-                                allowedOrigins: "http://localhost:5173"
-                                allowedMethods: "*"
-                                allowedHeaders: "*"
-                                allowCredentials: true
+            # Fix: globalcors should be a direct child of gateway
+            globalcors:
+                add-to-simple-url-handler-mapping: true
+                cors-configurations:
+                    "[/**]":
+                        allowedOrigins: "http://localhost:5173"
+                        allowedMethods: "*"
+                        allowedHeaders: "*"
+                        allowCredentials: true
+            discovery:
+                locator:
+                    enabled: true
+                    lower-case-service-id: true
             routes:
                 # --- AUTH SERVICE ---
                 - id: auth-service
@@ -55,6 +55,7 @@ spring:
                       - Path=/v3/api-docs/files/**
                   filters:
                       - "RewritePath=/v3/api-docs/files/(?<segment>.*), /v3/api-docs/${segment}"
+
                 # --- COLLAB SERVICE ---
                 - id: collab-service
                   uri: lb://collab-service
@@ -68,6 +69,20 @@ spring:
                       - Path=/v3/api-docs/sessions/**
                   filters:
                       - "RewritePath=/v3/api-docs/sessions/(?<segment>.*), /v3/api-docs/${segment}"
+
+                # --- EXECUTION SERVICE (NEWly Added) ---
+                - id: execution-service
+                  uri: lb://execution-service
+                  predicates:
+                      - Path=/api/v1/executions/**
+                  filters:
+                      - "RewritePath=/api/v1/executions/(?<segment>.*), /${segment}"
+                - id: execution-openapi
+                  uri: lb://execution-service
+                  predicates:
+                      - Path=/v3/api-docs/executions/**
+                  filters:
+                      - "RewritePath=/v3/api-docs/executions/(?<segment>.*), /v3/api-docs/${segment}"
 
 eureka:
     client:
@@ -94,3 +109,5 @@ springdoc:
               url: "/v3/api-docs/files"
             - name: "Collab Service"
               url: "/v3/api-docs/sessions"
+            - name: "Execution Service"
+              url: "/v3/api-docs/executions"
