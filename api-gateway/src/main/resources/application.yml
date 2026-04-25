@@ -118,6 +118,12 @@ spring:
                       - Path=/api/v1/notifications/**
                   filters:
                       - "RewritePath=/api/v1/notifications/(?<segment>.*), /${segment}"
+                - id: notification-openapi
+                  uri: lb://notification-service
+                  predicates:
+                      - Path=/v3/api-docs/notifications/**
+                  filters:
+                      - "RewritePath=/v3/api-docs/notifications/(?<segment>.*), /v3/api-docs/${segment}"
 
                 # --- WEBSOCKET ROUTE ---
                 - id: notification-ws
@@ -125,12 +131,17 @@ spring:
                   predicates:
                       - Path=/ws-notifications/**
 
-                - id: notification-openapi
-                  uri: lb://notification-service
+                # --- PAYMENT SERVICE ---
+                - id: payment-service
+                  uri: lb://payment-service
                   predicates:
-                      - Path=/v3/api-docs/notifications/**
+                      - Path=/api/v1/payments/**
+                - id: payment-openapi
+                  uri: lb://payment-service
+                  predicates:
+                      - Path=/v3/api-docs/payments/**
                   filters:
-                      - "RewritePath=/v3/api-docs/notifications/(?<segment>.*), /v3/api-docs/${segment}"
+                      - "RewritePath=/v3/api-docs/payments/(?<segment>.*), /v3/api-docs/${segment}"
 
 eureka:
     client:
@@ -165,3 +176,6 @@ springdoc:
               url: "/v3/api-docs/comments"
             - name: "Notification Service"
               url: "/v3/api-docs/notifications"
+            # PAYMENT SERVICE TO SWAGGER DROPDOWN
+            - name: "Payment Service"
+              url: "/v3/api-docs/payments"
