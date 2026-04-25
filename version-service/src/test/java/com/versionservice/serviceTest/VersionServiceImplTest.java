@@ -1,11 +1,11 @@
 package com.versionservice.serviceTest;
 
 import static org.mockito.ArgumentMatchers.any;
-
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.versionservice.entity.Snapshot;
+import com.versionservice.repository.SnapshotRepository;
 import com.versionservice.serviceImpl.VersionServiceImpl;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -19,81 +19,84 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Unit Tests for Version-Service. Ensures cryptographic integrity, accurate
+ * diff calculation, and history preservation.
+ */
 @ExtendWith(MockitoExtension.class)
 public class VersionServiceImplTest {
 
-    @Mock
-    private com.versionservice.repository.SnapshotRepository repository;
+	@Mock
+	private SnapshotRepository repository;
 
-    @InjectMocks
-    private VersionServiceImpl versionService;
+	@InjectMocks
+	private VersionServiceImpl versionService;
 
-    private Snapshot baseSnapshot;
-    private Snapshot headSnapshot;
+	private Snapshot baseSnapshot;
+	private Snapshot headSnapshot;
 
-    @BeforeEach
-    void setUp() {
-        baseSnapshot = Snapshot.builder()
-                .id(1L)
-                .fileId(10)
-                .content("public class Hello {\n    // Old Code\n}")
-                .build();
+	@BeforeEach
+	void setUp() {
+		// Sample data representing the evolution of a Java class
+		baseSnapshot = Snapshot.builder().id(1L).fileId(10).content("public class Hello {\n    // Old Code\n}").build();
 
-        headSnapshot = Snapshot.builder()
-                .id(2L)
-                .fileId(10)
-                .content("public class Hello {\n    // New Code\n}")
-                .build();
-    }
+		headSnapshot = Snapshot.builder().id(2L).fileId(10).content("public class Hello {\n    // New Code\n}").build();
+	}
 
-    @Test
-    void testCreateSnapshot_IntegrityAndHashing() {
-        // Arrange
-        when(repository.save(any(Snapshot.class))).thenAnswer(i -> i.getArguments()[0]);
-        when(repository.findFirstByFileIdOrderByCreatedAtDesc(10)).thenReturn(Optional.empty());
+	@Test
+	void testCreateSnapshot_IntegrityAndHashing() {
+		// Arrange: Mock the save and the "latest version" check
+		when(repository.save(any(Snapshot.class))).thenAnswer(i -> i.getArguments()[0]);
+		when(repository.findFirstByFileIdOrderByCreatedAtDesc(10)).thenReturn(Optional.empty());
 
-        // Act
-        Snapshot result = versionService.createSnapshot(baseSnapshot);
+		// Act
+		Snapshot result = versionService.createSnapshot(baseSnapshot);
 
-        // Assert
-        assertNotNull(result.getHash());
-        assertEquals(64, result.getHash().length()); // SHA-256 is 64 chars hex
-        verify(repository).save(any(Snapshot.class));
-    }
+		// Assert
+		assertNotNull(result.getHash(), "Snapshot must have a generated hash");
+		assertEquals(64, result.getHash().length(), "SHA-256 hash must be exactly 64 characters (hex)");
+		verify(repository, times(1)).save(any(Snapshot.class));
+	}
 
-    @Test
-    @SuppressWarnings("unchecked")
-    void testCompareSnapshots_MyersDiffLogic() {
-        // Arrange
-        when(repository.findById(1L)).thenReturn(Optional.of(baseSnapshot));
-        when(repository.findById(2L)).thenReturn(Optional.of(headSnapshot));
+	@Test
+	@SuppressWarnings("unchecked")
+	void testCompareSnapshots_MyersDiffLogic() {
+		// Arrange
+		when(repository.findById(1L)).thenReturn(Optional.of(baseSnapshot));
+		when(repository.findById(2L)).thenReturn(Optional.of(headSnapshot));
 
-        // Act
-        Map<String, Object> diffResult = versionService.compareSnapshots(1L, 2L);
+		// Act: Generate line-by-line comparison
+		Map<String, Object> diffResult = versionService.compareSnapshots(1L, 2L);
 
-        // Assert
-        assertTrue(diffResult.containsKey("changes"));
-        List<String> changes = (List<String>) diffResult.get("changes");
-        
-        // Myers diff should catch the line change
-        assertFalse(changes.isEmpty());
-        assertTrue(changes.get(0).contains("New Code") || changes.get(0).contains("CHANGE"));
-    }
+		// Assert
+		assertTrue(diffResult.containsKey("diffs"), "Response must contain the calculated diffs");
+		List<String> changes = (List<String>) diffResult.get("diffs");
 
-    @Test
-    void testRestoreVersion_NonDestructiveFlow() {
-        // Arrange
-        when(repository.findById(1L)).thenReturn(Optional.of(baseSnapshot));
-        when(repository.save(any(Snapshot.class))).thenAnswer(i -> i.getArguments()[0]);
+		// Ensure the algorithm detected the difference between "Old Code" and "New
+		// Code"
+		assertFalse(changes.isEmpty(), "Diff results should not be empty for modified files");
+		assertTrue(changes.stream().anyMatch(s -> s.contains("New Code")), "Diff should highlight the added line");
+	}
 
-        // Act
-        Snapshot restored = versionService.restoreVersion(1L, 500);
+	@Test
+	void testRestoreVersion_NonDestructiveFlow() {
+		// Arrange: Mock retrieval of the old version we want to revert to
+		when(repository.findById(1L)).thenReturn(Optional.of(baseSnapshot));
+		when(repository.save(any(Snapshot.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        // Assert
-        assertEquals(baseSnapshot.getContent(), restored.getContent());
-        assertTrue(restored.getCommitMessage().contains("Restored"));
-        assertEquals(500, restored.getUserId());
-        // Verify it was treated as a NEW snapshot creation
-        verify(repository, times(1)).save(any(Snapshot.class));
-    }
+		// Act: Restore file to state of Snapshot #1
+		Snapshot restored = versionService.restoreVersion(1L, 500);
+
+		// Assert: Requirement check - Restoration must create a NEW entry, not delete
+		// history
+		assertEquals(baseSnapshot.getContent(), restored.getContent(),
+				"Restored content must match the target version");
+		assertTrue(restored.getCommitMessage().contains("Restored"),
+				"Restoration must be labeled in the history trail");
+		assertEquals(500, restored.getUserId(), "The restorer's ID must be attributed to the new snapshot");
+
+		// Verify it was treated as a NEW snapshot creation (Standard industry
+		// immutability)
+		verify(repository, times(1)).save(any(Snapshot.class));
+	}
 }

@@ -1,16 +1,29 @@
 server:
-  port: 9090
+    port: 9090
 
 spring:
-  application:
-    name: admin-server
+    application:
+        name: admin-server
+    boot:
+        admin:
+            context-path: /admin
+            ui:
+                title: "CodeSync Dashboard"
+                brand: "<img src='assets/img/logo.png'> CodeSync Admin"
 
 eureka:
-  client:
-    service-url:
-      defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
-  instance:
-    prefer-ip-address: true
+    client:
+        service-url:
+            defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
+    instance:
+        # Crucial for stable monitoring links in Docker or local environments
+        prefer-ip-address: true
 
-# Spring Boot Admin settings
-spring.boot.admin.context-path: /admin
+management:
+    endpoints:
+        web:
+            exposure:
+                include: "*" # Expose everything so the Admin server can monitor itself
+    endpoint:
+        health:
+            show-details: always

@@ -11,6 +11,10 @@ import org.springframework.security.web.SecurityFilterChain;
 import com.authservice.serviceImpl.CustomOAuth2UserService;
 import jakarta.servlet.http.HttpServletResponse;
 
+/**
+ * Security Configuration - Centralizes Auth Rules Standardizes Password
+ * Encoding and OAuth2 Integration
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -20,24 +24,27 @@ public class SecurityConfig {
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {
+		// Industry Standard: BCrypt for one-way password hashing
 		return new BCryptPasswordEncoder();
 	}
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-		http.csrf(csrf -> csrf.disable())
-				// CORS IS NOW DISABLED HERE - handled by API Gateway
-				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/oauth2/**", "/login/**")
-						.permitAll().requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
-						.permitAll().requestMatchers("/actuator/**").permitAll().anyRequest().authenticated())
+		http.csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth
+				// Public Endpoints
+				.requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/oauth2/**", "/login/**").permitAll()
+				.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+				.requestMatchers("/actuator/**").permitAll()
+				// Secured Endpoints
+				.anyRequest().authenticated())
 				.oauth2Login(
 						oauth2 -> oauth2.userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+								// Frontend callback after Google/GitHub login
 								.defaultSuccessUrl("http://localhost:5173/oauth-success", true))
 				.exceptionHandling(
 						exception -> exception.authenticationEntryPoint((request, response, authException) -> {
-							// Returns 401 instead of a 302 redirect for API calls
-							response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+							// Prevents 302 Redirect; sends 401 JSON for easier Frontend handling
+							response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session expired or unauthorized");
 						}));
 
 		return http.build();

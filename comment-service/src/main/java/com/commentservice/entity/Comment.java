@@ -4,6 +4,10 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
+/**
+ * Comment Entity - Represents an inline code review annotation. Supports
+ * line-specific feedback and threaded replies.
+ */
 @Entity
 @Table(name = "user_comments")
 @Getter
@@ -20,19 +24,26 @@ public class Comment {
 	private Integer userId;
 	private String username;
 
-	@Column(columnDefinition = "TEXT")
+	@Column(columnDefinition = "TEXT", nullable = false)
 	private String content;
 
-	// For Code Review functionality (Requirement R2.10)
+	// Critical for Requirement R2.10: Attach feedback to specific code lines
 	private Integer lineNumber;
 
-	// For Threaded Replies
+	// Supports nested discussions (null if it's a top-level comment)
 	private Long parentCommentId;
 
 	private LocalDateTime createdAt;
+	private LocalDateTime updatedAt;
 
 	@PrePersist
 	protected void onCreate() {
-		createdAt = LocalDateTime.now();
+		this.createdAt = LocalDateTime.now();
+		this.updatedAt = LocalDateTime.now();
+	}
+
+	@PreUpdate
+	protected void onUpdate() {
+		this.updatedAt = LocalDateTime.now();
 	}
 }

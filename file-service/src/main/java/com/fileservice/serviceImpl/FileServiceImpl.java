@@ -24,12 +24,14 @@ public class FileServiceImpl implements FileService {
 	private CodeFileRepository fileRepository;
 
 	@Override
+	@Transactional
 	public Folder createFolder(Folder folder) {
 		folder.setDeleted(false);
 		return folderRepository.save(folder);
 	}
 
 	@Override
+	@Transactional
 	public CodeFile createFile(CodeFile file) {
 		file.setDeleted(false);
 		file.setCreatedAt(LocalDateTime.now());
@@ -38,32 +40,40 @@ public class FileServiceImpl implements FileService {
 	}
 
 	@Override
+	@Transactional
 	public CodeFile updateFileContent(Long fileId, String content, int userId) {
-		CodeFile file = fileRepository.findById(fileId).orElseThrow(() -> new RuntimeException("File not found"));
+		CodeFile file = fileRepository.findById(fileId)
+				.orElseThrow(() -> new RuntimeException("Update Failed: File not found"));
+
 		file.setContent(content);
 		file.setLastEditedBy(userId);
 		file.setUpdatedAt(LocalDateTime.now());
-		file.setSize((long) content.length());
+		file.setSize((long) (content != null ? content.length() : 0));
 		return fileRepository.save(file);
 	}
 
 	@Override
 	public List<FileNode> getProjectTree(int projectId) {
+		// Auto-initialize if project is empty
 		if (folderRepository.findByProjectId(projectId).isEmpty()
 				&& fileRepository.findByProjectIdAndIsDeletedFalse(projectId).isEmpty()) {
 			initializeNewProject(projectId);
 		}
 
 		List<FileNode> rootNodes = new ArrayList<>();
+
+		// 1. Fetch Root Folders
 		List<Folder> rootFolders = folderRepository.findByProjectIdAndParentFolderIdIsNullAndIsDeletedFalse(projectId);
 		for (Folder folder : rootFolders) {
 			rootNodes.add(buildFolderTree(folder));
 		}
 
+		// 2. Fetch Root Files
 		List<CodeFile> rootFiles = fileRepository.findByProjectIdAndFolderIdIsNullAndIsDeletedFalse(projectId);
 		for (CodeFile file : rootFiles) {
 			rootNodes.add(convertToFileNode(file));
 		}
+
 		return rootNodes;
 	}
 
@@ -71,140 +81,120 @@ public class FileServiceImpl implements FileService {
 		CodeFile readme = new CodeFile();
 		readme.setName("README.md");
 		readme.setExtension("md");
-		readme.setContent("# Welcome to CodeSync\nStart coding by creating new files.");
+		readme.setContent("# Welcome to CodeSync\nCreated at: " + LocalDateTime.now());
 		readme.setProjectId(projectId);
 		readme.setPath("README.md");
 		fileRepository.save(readme);
 	}
 
 	private FileNode buildFolderTree(Folder folder) {
-		FileNode node = new FileNode();
-		node.setId("folder-" + folder.getFolderId());
-		node.setName(folder.getName());
-		node.setType("FOLDER");
+		FileNode node = FileNode.builder().id("folder-" + folder.getFolderId()).name(folder.getName()).type("FOLDER")
+				.children(new ArrayList<>()).build();
 
-		List<Folder> subFolders = folderRepository.findByParentFolderIdAndIsDeletedFalse(folder.getFolderId());
-		for (Folder sub : subFolders) {
-			node.getChildren().add(buildFolderTree(sub));
-		}
+		// Recursive call for subfolders
+		folderRepository.findByParentFolderIdAndIsDeletedFalse(folder.getFolderId())
+				.forEach(sub -> node.getChildren().add(buildFolderTree(sub)));
 
-		List<CodeFile> files = fileRepository.findByFolderIdAndIsDeletedFalse(folder.getFolderId());
-		for (CodeFile f : files) {
-			node.getChildren().add(convertToFileNode(f));
-		}
+		// Add files within this folder
+		fileRepository.findByFolderIdAndIsDeletedFalse(folder.getFolderId())
+				.forEach(f -> node.getChildren().add(convertToFileNode(f)));
+
 		return node;
 	}
 
 	private FileNode convertToFileNode(CodeFile file) {
-		FileNode node = new FileNode();
-		node.setId("file-" + file.getFileId());
-		node.setName(file.getName());
-		node.setType("FILE");
-		node.setContent(file.getContent());
-		return node;
-	}
-
-	@Override
-	public void deleteFile(Long fileId) {
-		CodeFile file = fileRepository.findById(fileId).orElseThrow(() -> new RuntimeException("File not found"));
-		file.setDeleted(true);
-		fileRepository.save(file);
+		return FileNode.builder().id("file-" + file.getFileId()).name(file.getName()).type("FILE")
+				.content(file.getContent()).build();
 	}
 
 	@Override
 	@Transactional
 	public void deleteFolder(Long folderId) {
-		Folder folder = folderRepository.findById(folderId).orElseThrow(() -> new RuntimeException("Folder not found"));
+		Folder folder = folderRepository.findById(folderId)
+				.orElseThrow(() -> new RuntimeException("Delete Failed: Folder not found"));
+
+		// Soft delete the folder
 		folder.setDeleted(true);
 		folderRepository.save(folder);
 
+		// Soft delete all files inside
 		List<CodeFile> files = fileRepository.findByFolderIdAndIsDeletedFalse(folderId);
 		files.forEach(f -> f.setDeleted(true));
 		fileRepository.saveAll(files);
 
-		List<Folder> subFolders = folderRepository.findByParentFolderIdAndIsDeletedFalse(folderId);
-		for (Folder sub : subFolders) {
-			deleteFolder(sub.getFolderId());
-		}
+		// Recursively handle subfolders
+		folderRepository.findByParentFolderIdAndIsDeletedFalse(folderId)
+				.forEach(sub -> deleteFolder(sub.getFolderId()));
 	}
-
-	@Override
-	public CodeFile renameFile(Long fileId, String newName) {
-		CodeFile file = fileRepository.findById(fileId).orElseThrow(() -> new RuntimeException("File not found"));
-		file.setName(newName);
-		if (newName.contains(".")) {
-			file.setExtension(newName.substring(newName.lastIndexOf(".") + 1));
-		}
-		return fileRepository.save(file);
-	}
-
-	@Override
-	public Folder renameFolder(Long folderId, String newName) {
-		Folder folder = folderRepository.findById(folderId).orElseThrow(() -> new RuntimeException("File not found"));
-		folder.setName(newName);
-		return folderRepository.save(folder);
-	}
-
-	@Override
-	public List<CodeFile> searchInProject(int projectId, String query) {
-		return fileRepository.findByProjectIdAndContentContainingAndIsDeletedFalse(projectId, query);
-	}
-
-	// Inside FileServiceImpl.java
 
 	@Override
 	@Transactional
 	public void cloneProjectFiles(int sourceProjectId, int targetProjectId) {
-		// 1. Clone root folders recursively
-		List<Folder> rootFolders = folderRepository
-				.findByProjectIdAndParentFolderIdIsNullAndIsDeletedFalse(sourceProjectId);
-		for (Folder f : rootFolders) {
-			cloneFolderRecursive(f, null, targetProjectId);
-		}
+		// Clone Hierarchy starting from root folders
+		folderRepository.findByProjectIdAndParentFolderIdIsNullAndIsDeletedFalse(sourceProjectId)
+				.forEach(f -> cloneFolderRecursive(f, null, targetProjectId));
 
-		// 2. Clone root files
-		List<CodeFile> rootFiles = fileRepository.findByProjectIdAndFolderIdIsNullAndIsDeletedFalse(sourceProjectId);
-		for (CodeFile file : rootFiles) {
+		// Clone Root Files
+		fileRepository.findByProjectIdAndFolderIdIsNullAndIsDeletedFalse(sourceProjectId).forEach(file -> {
 			CodeFile newFile = new CodeFile();
 			newFile.setName(file.getName());
 			newFile.setContent(file.getContent());
 			newFile.setExtension(file.getExtension());
-			newFile.setPath(file.getPath());
-			newFile.setSize(file.getSize());
 			newFile.setProjectId(targetProjectId);
 			newFile.setCreatedById(file.getCreatedById());
-			newFile.setDeleted(false);
 			createFile(newFile);
-		}
+		});
 	}
 
-	private void cloneFolderRecursive(Folder sourceFolder, Long parentFolderId, int targetProjectId) {
+	private void cloneFolderRecursive(Folder sourceFolder, Long targetParentId, int targetProjectId) {
 		Folder newFolder = new Folder();
 		newFolder.setName(sourceFolder.getName());
 		newFolder.setProjectId(targetProjectId);
-		newFolder.setParentFolderId(parentFolderId);
-		newFolder.setDeleted(false);
+		newFolder.setParentFolderId(targetParentId);
 		newFolder = createFolder(newFolder);
 
-		// Recursively clone sub-folders
-		List<Folder> subFolders = folderRepository.findByParentFolderIdAndIsDeletedFalse(sourceFolder.getFolderId());
-		for (Folder sub : subFolders) {
-			cloneFolderRecursive(sub, newFolder.getFolderId(), targetProjectId);
-		}
+		final Long currentNewFolderId = newFolder.getFolderId();
 
-		// Clone all files resting inside this folder
-		List<CodeFile> files = fileRepository.findByFolderIdAndIsDeletedFalse(sourceFolder.getFolderId());
-		for (CodeFile f : files) {
-			CodeFile newFile = new CodeFile();
-			newFile.setName(f.getName());
-			newFile.setContent(f.getContent()); // FIXED: changed newCode to newFile
-			newFile.setExtension(f.getExtension());
-			newFile.setPath(f.getPath());
-			newFile.setSize(f.getSize());
-			newFile.setProjectId(targetProjectId);
-			newFile.setFolderId(newFolder.getFolderId().intValue()); // Mapping to the newly created folder ID
-			newFile.setDeleted(false);
-			createFile(newFile);
-		}
+		// Subfolders
+		folderRepository.findByParentFolderIdAndIsDeletedFalse(sourceFolder.getFolderId())
+				.forEach(sub -> cloneFolderRecursive(sub, currentNewFolderId, targetProjectId));
+
+		// Files
+		fileRepository.findByFolderIdAndIsDeletedFalse(sourceFolder.getFolderId()).forEach(f -> {
+			CodeFile nf = new CodeFile();
+			nf.setName(f.getName());
+			nf.setContent(f.getContent());
+			nf.setExtension(f.getExtension());
+			nf.setProjectId(targetProjectId);
+			nf.setFolderId(currentNewFolderId.intValue());
+			createFile(nf);
+		});
+	}
+
+	@Override
+	public void deleteFile(Long id) {
+		fileRepository.findById(id).ifPresent(f -> {
+			f.setDeleted(true);
+			fileRepository.save(f);
+		});
+	}
+
+	@Override
+	public CodeFile renameFile(Long id, String name) {
+		CodeFile f = fileRepository.findById(id).orElseThrow();
+		f.setName(name);
+		return fileRepository.save(f);
+	}
+
+	@Override
+	public Folder renameFolder(Long id, String name) {
+		Folder f = folderRepository.findById(id).orElseThrow();
+		f.setName(name);
+		return folderRepository.save(f);
+	}
+
+	@Override
+	public List<CodeFile> searchInProject(int pid, String q) {
+		return fileRepository.findByProjectIdAndContentContainingAndIsDeletedFalse(pid, q);
 	}
 }

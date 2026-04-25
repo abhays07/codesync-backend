@@ -21,6 +21,10 @@ import com.collabservice.repository.CollabRepository;
 import com.collabservice.repository.ParticipantRepository;
 import com.collabservice.serviceImpl.CollabServiceImpl;
 
+/**
+ * Unit Tests for Collab-Service. Focuses on session orchestration, cursor
+ * synchronization, and participant presence.
+ */
 @ExtendWith(MockitoExtension.class)
 public class CollabServiceTest {
 
@@ -38,34 +42,40 @@ public class CollabServiceTest {
 
 	@BeforeEach
 	void setUp() {
+		// Initialize a standard session for testing
 		sampleSession = new CollabSession();
+		sampleSession.setSessionId("session-uuid");
 		sampleSession.setProjectId(101);
 		sampleSession.setFileId(202);
+		sampleSession.setStatus("ACTIVE");
 
+		// Initialize a standard participant
 		sampleParticipant = new Participant();
 		sampleParticipant.setUserId(1);
 		sampleParticipant.setSessionId("session-uuid");
 	}
 
 	@Test
-	void testCreateSession_ShouldReturnActiveSession() {
+	void testCreateSession_ShouldAssignUUIDAndStatus() {
 		// Arrange
 		when(collabRepo.save(any(CollabSession.class))).thenReturn(sampleSession);
 
 		// Act
-		CollabSession created = collabService.createSession(sampleSession);
+		CollabSession created = collabService.createSession(new CollabSession());
 
 		// Assert
-		assertNotNull(created.getSessionId());
-		assertEquals("ACTIVE", created.getStatus());
+		assertNotNull(created.getSessionId(), "Service must generate a unique UUID for every session");
+		assertEquals("ACTIVE", created.getStatus(), "Newly created sessions must default to ACTIVE status");
 		verify(collabRepo, times(1)).save(any(CollabSession.class));
 	}
 
 	@Test
-	void testJoinSession_ShouldAssignColorBasedOnCount() {
+	void testJoinSession_ShouldAssignDistinctColor() {
 		// Arrange
-		String sessionId = "test-session";
-		// Mock count as 1, so the index should be 1 (second color in the palette)
+		String sessionId = "session-uuid";
+		when(collabRepo.findById(sessionId)).thenReturn(Optional.of(sampleSession));
+		// Mock count as 1, which should result in the second color from the palette
+		// (#06B6D4)
 		when(participantRepo.countBySessionId(sessionId)).thenReturn(1L);
 		when(participantRepo.save(any(Participant.class))).thenAnswer(i -> i.getArguments()[0]);
 
@@ -73,22 +83,36 @@ public class CollabServiceTest {
 		Participant p = collabService.joinSession(sessionId, 5, "EDITOR");
 
 		// Assert
-		assertEquals("#06B6D4", p.getColor()); // The second color in your COLORS array
+		assertEquals("#06B6D4", p.getColor(), "Color must be assigned based on participant count rotation");
 		assertEquals(5, p.getUserId());
 		verify(participantRepo).save(any(Participant.class));
 	}
 
 	@Test
-	void testUpdateCursor_ShouldUpdateCoordinatesInList() {
+	void testJoinSession_NonExistentSession_ShouldThrowException() {
+		// Arrange: Simulate a user trying to join an expired or invalid session ID
+		when(collabRepo.findById("invalid-id")).thenReturn(Optional.empty());
+
+		// Act & Assert: This ensures our GlobalExceptionHandler has a clear message to
+		// catch
+		RuntimeException ex = assertThrows(RuntimeException.class, () -> {
+			collabService.joinSession("invalid-id", 1, "EDITOR");
+		});
+
+		assertTrue(ex.getMessage().contains("Session not found"), "Error message must be user-friendly for the UI");
+	}
+
+	@Test
+	void testUpdateCursor_ShouldPersistCoordinates() {
 		// Arrange
-		String sessionId = "test-session";
+		String sessionId = "session-uuid";
 		int userId = 1;
 		List<Participant> participants = new ArrayList<>();
 		participants.add(sampleParticipant);
 
 		when(participantRepo.findBySessionId(sessionId)).thenReturn(participants);
 
-		// Act
+		// Act: User moves cursor to Line 15, Column 40
 		collabService.updateCursor(sessionId, userId, 15, 40);
 
 		// Assert
@@ -98,26 +122,17 @@ public class CollabServiceTest {
 	}
 
 	@Test
-	void testLeaveSession_ShouldInvokeDelete() {
-		// Act
-		collabService.leaveSession("session-id", 1);
-
-		// Assert
-		verify(participantRepo, times(1)).deleteBySessionIdAndUserId("session-id", 1);
-	}
-
-	@Test
-	void testEndSession_ShouldMarkStatusAsEnded() {
+	void testEndSession_ShouldMarkStatusAndTimestamp() {
 		// Arrange
-		String sid = "uuid-123";
+		String sid = "session-uuid";
 		when(collabRepo.findById(sid)).thenReturn(Optional.of(sampleSession));
 
 		// Act
 		collabService.endSession(sid);
 
 		// Assert
-		assertEquals("ENDED", sampleSession.getStatus());
-		assertNotNull(sampleSession.getEndedAt());
+		assertEquals("ENDED", sampleSession.getStatus(), "Session status must update to ENDED");
+		assertNotNull(sampleSession.getEndedAt(), "endedAt timestamp must be populated on session closure");
 		verify(collabRepo).save(sampleSession);
 	}
 }

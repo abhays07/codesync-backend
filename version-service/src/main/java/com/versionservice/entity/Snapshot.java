@@ -4,29 +4,36 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
+/**
+ * Snapshot Entity - A point-in-time capture of a file's state. Uses SHA-256
+ * hashing for integrity and a parent pointer for history tracking.
+ */
 @Entity
 @Table(name = "snapshots")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class Snapshot {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    private Integer fileId;
-    private Integer userId;
-    private String username;
+	private Integer fileId;
+	private Integer userId;
+	private String username;
 
-    @Column(columnDefinition = "TEXT")
-    private String content;
+	@Column(columnDefinition = "LONGTEXT")
+	private String content;
 
-    private String commitMessage;
-    
-    // For data integrity (Requirement 2.7)
-    private String hash; 
-    
-    // For the Version History DAG (Directed Acyclic Graph)
-    private Long parentSnapshotId; 
+	private String commitMessage;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+	// Cryptographic fingerprint for Requirement 2.7 (Data Integrity)
+	private String hash;
+
+	// Pointer to the previous version to form the history chain
+	private Long parentSnapshotId;
+
+	private LocalDateTime createdAt = LocalDateTime.now();
 }

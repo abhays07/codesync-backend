@@ -1,52 +1,43 @@
 server:
-  port: 8083
+    port: 8083
 
 spring:
-  application:
-    name: file-service
-  datasource:
-    # Variables will be injected from root .env via STS Working Directory
-    url: jdbc:mysql://${DB_HOST:localhost}:3306/codesync_files_db?createDatabaseIfNotExist=true
-    username: ${DB_USER:root}
-    password: ${DB_PASSWORD:password}
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.MySQLDialect
-  
-  boot:
-    admin:
-      client:
-        url: http://localhost:9090/admin # Points to your Admin Server port
+    application:
+        name: file-service
+    datasource:
+        # Industry Standard: SSL disabled for local dev, enabled via ENV in production
+        url: jdbc:mysql://${DB_HOST:localhost}:3306/codesync_files_db?createDatabaseIfNotExist=true&useSSL=false
+        username: ${DB_USER:root}
+        password: ${DB_PASSWORD:password}
+    jpa:
+        hibernate:
+            ddl-auto: update
+        show-sql: false # Clean logs for production
+        properties:
+            hibernate:
+                dialect: org.hibernate.dialect.MySQLDialect
 
-  servlet:
-    multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
+    servlet:
+        multipart:
+            max-file-size: 5MB # Standardizing code file limits
+            max-request-size: 5MB
 
 eureka:
-  client:
-    service-url:
-      defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
-  instance:
-    prefer-ip-address: false
-    hostname: localhost
+    client:
+        service-url:
+            defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
+    instance:
+        prefer-ip-address: false
+        hostname: localhost
 
 management:
-  endpoints:
-    web:
-      exposure:
-        include: "health,info,metrics,env"
-  endpoint:
-    health:
-      show-details: always
+    endpoints:
+        web:
+            exposure:
+                include: "health,info"
 
-# Swagger Documentation
 springdoc:
-  api-docs:
-    path: /v3/api-docs
-  swagger-ui:
-    path: /swagger-ui.html
+    api-docs:
+        path: /v3/api-docs
+    swagger-ui:
+        path: /swagger-ui.html

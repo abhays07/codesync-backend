@@ -23,6 +23,10 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Unit Tests for Notification-Service. Focuses on the orchestration of
+ * persistent history, real-time WebSockets, and Async Emails.
+ */
 @ExtendWith(MockitoExtension.class)
 public class NotificationServiceImplTest {
 
@@ -42,42 +46,64 @@ public class NotificationServiceImplTest {
 
 	@BeforeEach
 	void setUp() {
-		testNotification = Notification.builder().recipientId(101).senderName("System").message("New Comment Added")
-				.type("COMMENT_ADDED").build();
+		// Sample notification: A collaborator has been approved for a project
+		testNotification = Notification.builder().recipientId(101).senderName("Abhay")
+				.message("Hey, your request to join CodeSync has been Approved.").type("COLLAB_REQUEST").build();
 	}
 
 	@Test
-	void testSendProjectNotification_FullFlow() {
-		// Arrange
+	void testSendProjectNotification_FullOmnichannelFlow() {
+		// Arrange: Mock the persistence layer
 		List<String> emails = Arrays.asList("member1@gmail.com", "member2@gmail.com");
 		when(repository.save(any(Notification.class))).thenReturn(testNotification);
 
-		// Act
+		// Act: Trigger the notification flow
 		Notification result = notificationService.sendProjectNotification(testNotification, emails);
 
-		// Assert
+		// Assert: Verify data integrity
 		assertNotNull(result);
+		assertEquals("COLLAB_REQUEST", result.getType());
 
-		// Verify Database Save
+		// 1. Verify Database Save (For the user's notification center history)
 		verify(repository, times(1)).save(testNotification);
 
-		// Verify WebSocket Push
+		// 2. Verify WebSocket Push (For real-time UI "ping")
+		// Requirement: Target specific user queue via STOMP user destination
 		verify(messagingTemplate, times(1)).convertAndSendToUser(eq("101"), eq("/queue/notifications"),
-				any(Notification.class));
+				eq(testNotification));
 
-		// Verify Email Dispatch (Updated for HTML Email method)
-		verify(emailService, times(1)).sendHtmlEmail(eq(emails), anyString(), anyString(), anyBoolean());
+		// 3. Verify Email Dispatch (For offline alerts)
+		// Requirement: Use the professional HTML template logic
+		verify(emailService, times(1)).sendHtmlEmail(eq(emails), anyString(), // Extracted Username
+				anyString(), // Extracted Project Name
+				eq(true) // isApproved should be true based on the message string
+		);
 	}
 
 	@Test
-	void testSendProjectNotification_NoEmails() {
+	void testSendProjectNotification_SkipEmailWhenNull() {
 		// Arrange
 		when(repository.save(any(Notification.class))).thenReturn(testNotification);
 
-		// Act
+		// Act: Pass null for emails list
 		notificationService.sendProjectNotification(testNotification, null);
 
-		// Assert (Updated for HTML Email method)
+		// Assert: DB and WebSockets should still fire, but Email should be skipped
+		verify(repository).save(any());
+		verify(messagingTemplate).convertAndSendToUser(anyString(), anyString(), any());
 		verify(emailService, never()).sendHtmlEmail(any(), anyString(), anyString(), anyBoolean());
+	}
+
+	@Test
+	void testMarkAsRead_ShouldUpdateStatus() {
+		// Arrange
+		when(repository.findById(1L)).thenReturn(java.util.Optional.of(testNotification));
+
+		// Act
+		notificationService.markAsRead(1L);
+
+		// Assert
+		assertTrue(testNotification.isRead(), "Notification must be marked as read in the DB");
+		verify(repository).save(testNotification);
 	}
 }

@@ -17,11 +17,10 @@ public class ProjectMember {
 
 	private int projectId;
 	private int userId;
-	
 	private String username;
 
 	@Column(length = 20)
-	private String role; // e.g., "EDITOR", "PENDING"
+	private String role; // PENDING (Requesting access), EDITOR (Full Access)
 
 	private LocalDateTime joinedAt = LocalDateTime.now();
 }

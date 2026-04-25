@@ -1,45 +1,30 @@
 server:
-    port: 8088 # Unique port for Comment-Service
+    port: 8088
 
 spring:
     application:
         name: comment-service
     datasource:
-        # Using MySQL with auto-create database support
         url: jdbc:mysql://${DB_HOST:localhost}:3306/codesync_comment_db?createDatabaseIfNotExist=true
-        username: ${DB_USER}
-        password: ${DB_PASSWORD}
-        driver-class-name: com.mysql.cj.jdbc.Driver
+        username: ${DB_USER:root}
+        password: ${DB_PASSWORD:password}
     jpa:
         hibernate:
             ddl-auto: update
-        show-sql: true
+        show-sql: false
         properties:
             hibernate:
-                dialect: org.hibernate.dialect.MySQL8Dialect
-        open-in-view: false # Performance optimization
+                dialect: org.hibernate.dialect.MySQLDialect
 
-# Service Discovery (Eureka)
 eureka:
     client:
         service-url:
-            defaultZone: http://localhost:8761/eureka/
+            defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
     instance:
-        prefer-ip-address: true
+        hostname: localhost
 
-# Swagger / OpenAPI Configuration
-springdoc:
-    api-docs:
-        path: /v3/api-docs
-    swagger-ui:
-        path: /swagger-ui.html
-
-# Monitoring for Spring Boot Admin Server
 management:
     endpoints:
         web:
             exposure:
-                include: "*"
-    endpoint:
-        health:
-            show-details: always
+                include: "health,info"

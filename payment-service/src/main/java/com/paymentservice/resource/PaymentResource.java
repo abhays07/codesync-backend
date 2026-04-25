@@ -1,13 +1,9 @@
 package com.paymentservice.resource;
 
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,13 +15,10 @@ import com.paymentservice.entity.PaymentOrder;
 import com.paymentservice.repository.PaymentRepository;
 import com.paymentservice.service.RazorpayService;
 import com.razorpay.Order;
-import com.razorpay.RazorpayClient;
 
 @RestController
 @RequestMapping("/api/v1/payments")
 public class PaymentResource {
-
-	private final RazorpayClient razorpayClient;
 
 	@Autowired
 	private RazorpayService paymentService;
@@ -36,10 +29,6 @@ public class PaymentResource {
 	@Autowired
 	private PaymentMessageProducer producer;
 
-	PaymentResource(RazorpayClient razorpayClient) {
-		this.razorpayClient = razorpayClient;
-	}
-
 	@PostMapping("/create-order")
 	public ResponseEntity<?> createOrder(@RequestBody Map<String, Object> data) throws Exception {
 		Double amount = Double.parseDouble(data.get("amount").toString());
@@ -48,6 +37,7 @@ public class PaymentResource {
 
 		Order order = paymentService.createRazorpayOrder(amount, userId, email);
 
+		// Persist the order immediately as PENDING
 		PaymentOrder paymentOrder = PaymentOrder.builder().razorpayOrderId(order.get("id")).amount(amount)
 				.userId(userId).userEmail(email).status("PENDING").build();
 
@@ -60,37 +50,15 @@ public class PaymentResource {
 		boolean isValid = paymentService.verifyPayment(request.getRazorpay_order_id(), request.getRazorpay_payment_id(),
 				request.getRazorpay_signature());
 
-		// Inside PaymentResource.java verify method
 		if (isValid) {
-			repository.findByRazorpayOrderId(request.getRazorpay_order_id()).ifPresent(p -> {
+			return repository.findByRazorpayOrderId(request.getRazorpay_order_id()).map(p -> {
 				p.setStatus("SUCCESS");
 				repository.save(p);
-
-				// TRIGGER NOTIFICATION
+				// Async push to Notification-Service via RabbitMQ
 				producer.sendPaymentSuccessNotification(p.getUserEmail(), p.getRazorpayOrderId(), p.getAmount());
-			});
-			return ResponseEntity.ok(Map.of("status", "success"));
+				return ResponseEntity.ok(Map.of("status", "success"));
+			}).orElse(ResponseEntity.status(404).body(Map.of("message", "Order record not found")));
 		}
-		return ResponseEntity.status(400).body(Map.of("status", "failure", "message", "Invalid signature"));
-	}
-
-	@GetMapping("/status/{userId}")
-	public ResponseEntity<?> getSubscriptionStatus(@PathVariable String userId) {
-
-		// Fetch the most recent successful payment
-		List<PaymentOrder> orders = repository.findByUserIdAndStatusOrderByCreatedAtDesc(userId, "SUCCESS");
-
-		if (orders.isEmpty()) {
-			return ResponseEntity.ok(Map.of("isSubscribed", false));
-		}
-		PaymentOrder latestPayment = orders.get(0);
-
-		// Calculate Expiry (30 days from purchase)
-		LocalDateTime expiryDate = latestPayment.getCreatedAt().plusDays(30);
-
-		// Real-life logic: Is the current date before the expiry date?
-		boolean isActive = LocalDateTime.now().isBefore(expiryDate);
-		return ResponseEntity.ok(Map.of("isSubscribed", isActive, "purchaseDate", latestPayment.getCreatedAt(),
-				"expiryDate", expiryDate, "amount", latestPayment.getAmount()));
+		return ResponseEntity.status(400).body(Map.of("status", "failure", "message", "Invalid payment signature"));
 	}
 }

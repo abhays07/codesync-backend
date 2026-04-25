@@ -6,9 +6,9 @@ import com.github.difflib.patch.Patch;
 import com.versionservice.entity.Snapshot;
 import com.versionservice.repository.SnapshotRepository;
 import com.versionservice.service.VersionService;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.MessageDigest;
 import java.util.*;
@@ -21,11 +21,12 @@ public class VersionServiceImpl implements VersionService {
 	private SnapshotRepository repository;
 
 	@Override
+	@Transactional
 	public Snapshot createSnapshot(Snapshot snapshot) {
-		// Calculate SHA-256 Hash for integrity
+		// 1. Calculate SHA-256 for integrity verification
 		snapshot.setHash(calculateHash(snapshot.getContent()));
 
-		// Find current latest to set as parent
+		// 2. Automatically link to the latest version of this file
 		repository.findFirstByFileIdOrderByCreatedAtDesc(snapshot.getFileId())
 				.ifPresent(latest -> snapshot.setParentSnapshotId(latest.getId()));
 
@@ -34,33 +35,37 @@ public class VersionServiceImpl implements VersionService {
 
 	@Override
 	public Map<String, Object> compareSnapshots(Long baseId, Long headId) {
-		Snapshot base = repository.findById(baseId).orElseThrow();
-		Snapshot head = repository.findById(headId).orElseThrow();
+		Snapshot base = repository.findById(baseId)
+				.orElseThrow(() -> new RuntimeException("Diff Error: Base version not found"));
+		Snapshot head = repository.findById(headId)
+				.orElseThrow(() -> new RuntimeException("Diff Error: Head version not found"));
 
 		List<String> baseLines = Arrays.asList(base.getContent().split("\n"));
 		List<String> headLines = Arrays.asList(head.getContent().split("\n"));
 
-		// Myers Diff Algorithm implementation via java-diff-utils
+		// Generate line-by-line diff using Myers Algorithm
 		Patch<String> patch = DiffUtils.diff(baseLines, headLines);
-
-		List<String> diffs = patch.getDeltas().stream().map(AbstractDelta::toString).collect(Collectors.toList());
+		List<String> changes = patch.getDeltas().stream().map(AbstractDelta::toString).collect(Collectors.toList());
 
 		Map<String, Object> response = new HashMap<>();
-		response.put("baseHash", base.getHash());
-		response.put("headHash", head.getHash());
-		response.put("changes", diffs);
+		response.put("baseVersion", base.getId());
+		response.put("headVersion", head.getId());
+		response.put("diffs", changes);
 		return response;
 	}
 
 	@Override
+	@Transactional
 	public Snapshot restoreVersion(Long snapshotId, Integer userId) {
-		Snapshot target = repository.findById(snapshotId).orElseThrow();
+		Snapshot target = repository.findById(snapshotId)
+				.orElseThrow(() -> new RuntimeException("Restore Failed: Version ID not found"));
 
-		// Restoration is non-destructive: create a NEW snapshot with OLD content
-		Snapshot restored = Snapshot.builder().fileId(target.getFileId()).content(target.getContent())
-				.commitMessage("Restored to version: " + snapshotId).userId(userId).build();
+		// Industry Standard: Restore by creating a NEW snapshot with the OLD content
+		// This preserves the history of the restoration itself.
+		Snapshot restoredSnapshot = Snapshot.builder().fileId(target.getFileId()).content(target.getContent())
+				.commitMessage("System: Restored to version #" + snapshotId).userId(userId).build();
 
-		return createSnapshot(restored);
+		return createSnapshot(restoredSnapshot);
 	}
 
 	@Override
@@ -68,17 +73,12 @@ public class VersionServiceImpl implements VersionService {
 		return repository.findByFileIdOrderByCreatedAtDesc(fileId);
 	}
 
-	@Override
-	public Snapshot getLatestSnapshot(Integer fileId) {
-		return repository.findFirstByFileIdOrderByCreatedAtDesc(fileId).orElse(null);
-	}
-
 	private String calculateHash(String content) {
 		try {
 			MessageDigest digest = MessageDigest.getInstance("SHA-256");
-			byte[] encodedhash = digest.digest(content.getBytes());
+			byte[] hash = digest.digest(content.getBytes("UTF-8"));
 			StringBuilder hexString = new StringBuilder();
-			for (byte b : encodedhash) {
+			for (byte b : hash) {
 				String hex = Integer.toHexString(0xff & b);
 				if (hex.length() == 1)
 					hexString.append('0');
@@ -86,7 +86,12 @@ public class VersionServiceImpl implements VersionService {
 			}
 			return hexString.toString();
 		} catch (Exception e) {
-			return UUID.randomUUID().toString(); // Fallback
+			return "HASH_ERROR_" + UUID.randomUUID().toString().substring(0, 8);
 		}
+	}
+
+	@Override
+	public Snapshot getLatestSnapshot(Integer fid) {
+		return repository.findFirstByFileIdOrderByCreatedAtDesc(fid).orElse(null);
 	}
 }

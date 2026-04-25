@@ -1,12 +1,13 @@
 package com.authservice.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
+/**
+ * User Entity - Core identity for CodeSync Developers & Admins
+ */
 @Entity
 @Table(name = "users")
 @Getter
@@ -35,16 +36,16 @@ public class User {
 	private String fullName;
 
 	@Column(name = "user_role")
-	private String role; // DEVELOPER, ADMIN
+	private String role = "DEVELOPER"; // Default role
 
 	private String avatarUrl;
-	private String provider; // LOCAL, GITHUB, GOOGLE
+	private String provider = "LOCAL"; // LOCAL, GITHUB, GOOGLE
 
 	private boolean isActive = true;
 	private LocalDateTime createdAt = LocalDateTime.now();
 	private String bio;
 
-	// Required constructor
+	// Constructor for reference-based tasks
 	public User(int userId) {
 		this.userId = userId;
 	}

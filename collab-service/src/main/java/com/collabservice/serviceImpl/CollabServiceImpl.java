@@ -3,13 +3,9 @@ package com.collabservice.serviceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import com.collabservice.entity.CollabSession;
-import com.collabservice.entity.Participant;
-import com.collabservice.repository.CollabRepository;
-import com.collabservice.repository.ParticipantRepository;
+import com.collabservice.entity.*;
+import com.collabservice.repository.*;
 import com.collabservice.service.CollabService;
-
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -22,19 +18,26 @@ public class CollabServiceImpl implements CollabService {
 	@Autowired
 	private ParticipantRepository participantRepo;
 
+	// Vibrant colors for remote cursors in the editor
 	private final String[] COLORS = { "#F97316", "#06B6D4", "#8B5CF6", "#EC4899", "#10B981", "#EAB308" };
 
 	@Override
+	@Transactional
 	public CollabSession createSession(CollabSession session) {
-		session.setSessionId(UUID.randomUUID().toString()); //
+		session.setSessionId(UUID.randomUUID().toString());
 		session.setStatus("ACTIVE");
 		session.setCreatedAt(LocalDateTime.now());
 		return collabRepo.save(session);
 	}
 
 	@Override
+	@Transactional
 	public Participant joinSession(String sessionId, int userId, String role) {
-		// Logic: Assign a rotating unique color based on current participant count
+		// Logic: Ensure session exists before joining
+		collabRepo.findById(sessionId)
+				.orElseThrow(() -> new RuntimeException("Join Failed: Session not found or expired"));
+
+		// Assign a rotating color based on current participant count
 		long count = participantRepo.countBySessionId(sessionId);
 		String color = COLORS[(int) (count % COLORS.length)];
 
@@ -42,7 +45,7 @@ public class CollabServiceImpl implements CollabService {
 		participant.setSessionId(sessionId);
 		participant.setUserId(userId);
 		participant.setRole(role);
-		participant.setColor(color); 
+		participant.setColor(color);
 		participant.setJoinedAt(LocalDateTime.now());
 
 		return participantRepo.save(participant);
@@ -55,19 +58,19 @@ public class CollabServiceImpl implements CollabService {
 	}
 
 	@Override
+	@Transactional
 	public void updateCursor(String sessionId, int userId, int line, int col) {
-		// Real-life logic: In a high-traffic app, cursor updates are often
-		// handled via WebSocket directly without constant DB writes.
-		// However, per class diagram requirements, we persist coordinates.
-		List<Participant> members = participantRepo.findBySessionId(sessionId);
-		members.stream().filter(p -> p.getUserId() == userId).findFirst().ifPresent(p -> {
-			p.setCursorLine(line);
-			p.setCursorCol(col);
-			participantRepo.save(p);
-		});
+		// Updates the cursor coordinates for live synchronization
+		participantRepo.findBySessionId(sessionId).stream().filter(p -> p.getUserId() == userId).findFirst()
+				.ifPresent(p -> {
+					p.setCursorLine(line);
+					p.setCursorCol(col);
+					participantRepo.save(p);
+				});
 	}
 
 	@Override
+	@Transactional
 	public void endSession(String sessionId) {
 		collabRepo.findById(sessionId).ifPresent(s -> {
 			s.setStatus("ENDED");
@@ -77,17 +80,17 @@ public class CollabServiceImpl implements CollabService {
 	}
 
 	@Override
-	public Optional<CollabSession> getSessionById(String sessionId) {
-		return collabRepo.findById(sessionId);
+	public Optional<CollabSession> getSessionById(String id) {
+		return collabRepo.findById(id);
 	}
 
 	@Override
-	public List<CollabSession> getSessionsByProject(int projectId) {
-		return collabRepo.findByProjectId(projectId);
+	public List<CollabSession> getSessionsByProject(int id) {
+		return collabRepo.findByProjectId(id);
 	}
 
 	@Override
-	public List<Participant> getParticipants(String sessionId) {
-		return participantRepo.findBySessionId(sessionId);
+	public List<Participant> getParticipants(String id) {
+		return participantRepo.findBySessionId(id);
 	}
 }

@@ -1,8 +1,12 @@
 package com.paymentservice.service;
 
 import com.razorpay.Order;
+
 import com.razorpay.RazorpayClient;
 import com.razorpay.Utils;
+
+import java.util.UUID;
+
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,11 +23,10 @@ public class RazorpayService {
 
 	public Order createRazorpayOrder(Double amount, String userId, String email) throws Exception {
 		JSONObject orderRequest = new JSONObject();
-		orderRequest.put("amount", (int) (amount * 100)); // Amount in paise
+		orderRequest.put("amount", (int) (amount * 100)); // Standard: Convert INR to Paise
 		orderRequest.put("currency", "INR");
-		orderRequest.put("receipt", "receipt_" + System.currentTimeMillis());
+		orderRequest.put("receipt", "txn_" + UUID.randomUUID().toString().substring(0, 8));
 
-		// Custom notes to track user data inside Razorpay
 		JSONObject notes = new JSONObject();
 		notes.put("userId", userId);
 		notes.put("email", email);
@@ -34,12 +37,12 @@ public class RazorpayService {
 
 	public boolean verifyPayment(String orderId, String paymentId, String signature) {
 		try {
+			// Security: Signature verification ensures the payment wasn't tampered with
 			JSONObject options = new JSONObject();
 			options.put("razorpay_order_id", orderId);
 			options.put("razorpay_payment_id", paymentId);
 			options.put("razorpay_signature", signature);
 
-			// Verifies the signature using the keySecret
 			return Utils.verifyPaymentSignature(options, keySecret);
 		} catch (Exception e) {
 			return false;

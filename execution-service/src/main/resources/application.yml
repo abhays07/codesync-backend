@@ -1,52 +1,36 @@
 server:
-  port: 8085
+    port: 8085
 
 spring:
-  application:
-    name: execution-service
-  datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:3306/codesync_execution_db?createDatabaseIfNotExist=true
-    username: ${DB_USER:root}
-    password: ${DB_PASSWORD:password}
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.MySQLDialect
-  
-  rabbitmq:
-    host: ${RABBIT_HOST:localhost}
-    port: 5672
-    username: ${RABBIT_USER:guest}
-    password: ${RABBIT_PASSWORD:guest}
+    application:
+        name: execution-service
+    datasource:
+        url: jdbc:mysql://${DB_HOST:localhost}:3306/codesync_execution_db?createDatabaseIfNotExist=true
+        username: ${DB_USER:root}
+        password: ${DB_PASSWORD:password}
+    jpa:
+        hibernate:
+            ddl-auto: update
+        show-sql: false
 
-  boot:
-    admin:
-      client:
-        url: http://localhost:9090/admin # Your Admin Server port
+    rabbitmq:
+        host: ${RABBIT_HOST:localhost}
+        port: 5672
+        listener:
+            simple:
+                # Optimization: Only process 1 code execution at a time per service instance
+                # to prevent CPU spikes and ensure sandbox integrity.
+                prefetch: 1
 
 eureka:
-  client:
-    service-url:
-      defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
-  instance:
-    prefer-ip-address: false
-    hostname: localhost
-
-# Swagger / OpenAPI Configuration
-springdoc:
-  api-docs:
-    path: /v3/api-docs
-  swagger-ui:
-    path: /swagger-ui.html
+    client:
+        service-url:
+            defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
+    instance:
+        hostname: localhost
 
 management:
-  endpoints:
-    web:
-      exposure:
-        include: "health,info,metrics,env"
-  endpoint:
-    health:
-      show-details: always
+    endpoints:
+        web:
+            exposure:
+                include: "health,info"

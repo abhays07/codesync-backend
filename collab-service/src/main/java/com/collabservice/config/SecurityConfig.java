@@ -14,21 +14,20 @@ public class SecurityConfig {
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http
-				// 1. MUST disable CSRF to allow POST requests from your React frontend
+				// Disable CSRF for API-driven microservice interactions
 				.csrf(csrf -> csrf.disable())
 
-				// 2. Ensure the session is stateless (standard for microservices)
+				// Ensure no HTTP session is created (Stateless JWT mode)
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-				// 3. Configure permissions
 				.authorizeHttpRequests(auth -> auth
-						// Allow all routes starting with / for testing, or be specific:
-						.requestMatchers("/sessions/**").permitAll().requestMatchers("/api/v1/sessions/**").permitAll()
-						.requestMatchers("/actuator/**", "/v3/api-docs/**", "/swagger-ui/**").permitAll().anyRequest()
-						.permitAll() // Temporarily permit all to bypass 403 during testing
-				)
-
-				// 4. Explicitly disable the UI features that cause redirects
+						// Permitting access to documentation and health check endpoints
+						.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/actuator/**").permitAll()
+						// Session endpoints are routed via Gateway
+						.requestMatchers("/api/v1/sessions/**").permitAll()
+						// Permit WebSocket handshakes
+						.requestMatchers("/ws-collab/**").permitAll().anyRequest().authenticated())
+				// Disable default Login/Logout redirects to keep it a pure API
 				.formLogin(form -> form.disable()).httpBasic(basic -> basic.disable());
 
 		return http.build();

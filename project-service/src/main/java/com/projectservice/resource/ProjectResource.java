@@ -16,7 +16,8 @@ public class ProjectResource {
 	private ProjectService projectService;
 
 	@PostMapping
-	public ResponseEntity<Project> create(@RequestBody Project project) {
+	public ResponseEntity<Project> createProject(@RequestBody Project project) {
+		// Requirement: Every project must have an owner and a language
 		return ResponseEntity.ok(projectService.createProject(project));
 	}
 
@@ -27,13 +28,14 @@ public class ProjectResource {
 
 	@GetMapping("/public")
 	public ResponseEntity<List<Project>> getPublic(@RequestParam int currentUserId) {
+		// Fetches community projects with 'isStarredByMe' logic applied
 		return ResponseEntity.ok(projectService.getPublicProjects(currentUserId));
 	}
 
 	@PutMapping("/{id}/star")
-	public ResponseEntity<Void> star(@PathVariable int id, @RequestParam int userId) {
+	public ResponseEntity<Void> toggleStar(@PathVariable int id, @RequestParam int userId) {
 		projectService.starProject(id, userId);
-		return ResponseEntity.ok().build();
+		return ResponseEntity.noContent().build();
 	}
 
 	@GetMapping("/search")
@@ -41,21 +43,10 @@ public class ProjectResource {
 		return ResponseEntity.ok(projectService.searchProjects(name, userId));
 	}
 
-	@GetMapping("/language/{language}")
-	public ResponseEntity<List<Project>> getByLanguage(@PathVariable String language) {
-		return ResponseEntity.ok(projectService.getProjectsByLanguage(language));
-	}
-
-	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> delete(@PathVariable int id) {
-		projectService.deleteProject(id);
-		return ResponseEntity.ok().build();
-	}
-
-	@PutMapping("/{id}/archive")
-	public ResponseEntity<Void> archive(@PathVariable int id) {
-		projectService.archiveProject(id);
-		return ResponseEntity.ok().build();
+	@GetMapping("/{id}")
+	public ResponseEntity<Project> getById(@PathVariable int id) {
+		// Vital for the EditorPage to load project metadata (Language, Name)
+		return ResponseEntity.ok(projectService.getProjectById(id));
 	}
 
 	@PostMapping("/{id}/fork")
@@ -63,11 +54,7 @@ public class ProjectResource {
 		return ResponseEntity.ok(projectService.forkProject(id, userId));
 	}
 
-	@GetMapping("/{id}")
-	public ResponseEntity<Project> getById(@PathVariable int id) {
-		// This provides the project data for the EditorPage
-		return ResponseEntity.ok(projectService.getProjectById(id));
-	}
+	// --- COLLABORATION ENDPOINTS ---
 
 	@PostMapping("/{projectId}/members/request")
 	public ResponseEntity<Void> requestAccess(@PathVariable int projectId, @RequestParam int userId,
@@ -83,13 +70,13 @@ public class ProjectResource {
 	}
 
 	@GetMapping("/{projectId}/access")
-	public ResponseEntity<Boolean> checkAccess(@PathVariable int projectId, @RequestParam int userId) {
+	public ResponseEntity<Boolean> checkEditAccess(@PathVariable int projectId, @RequestParam int userId) {
+		// Gatekeeper check: Does this user have 'EDITOR' role or is 'OWNER'?
 		return ResponseEntity.ok(projectService.hasEditAccess(projectId, userId));
 	}
 
 	@GetMapping("/{projectId}/requests")
 	public ResponseEntity<List<ProjectMember>> getPendingRequests(@PathVariable int projectId) {
-		// Logic: Filter members by projectId and role 'PENDING'
 		return ResponseEntity.ok(projectService.getPendingRequests(projectId));
 	}
 
@@ -101,7 +88,18 @@ public class ProjectResource {
 	@DeleteMapping("/{projectId}/members/{userId}")
 	public ResponseEntity<Void> removeMember(@PathVariable int projectId, @PathVariable int userId) {
 		projectService.removeProjectMember(projectId, userId);
-		return ResponseEntity.ok().build();
+		return ResponseEntity.noContent().build();
 	}
 
+	@PutMapping("/{id}/archive")
+	public ResponseEntity<Void> archive(@PathVariable int id) {
+		projectService.archiveProject(id);
+		return ResponseEntity.noContent().build();
+	}
+
+	@DeleteMapping("/{id}")
+	public ResponseEntity<Void> delete(@PathVariable int id) {
+		projectService.deleteProject(id);
+		return ResponseEntity.noContent().build();
+	}
 }
