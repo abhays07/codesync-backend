@@ -97,7 +97,7 @@ spring:
                   filters:
                       - "RewritePath=/v3/api-docs/versions/(?<segment>.*), /v3/api-docs/${segment}"
 
-                # --- COMMENT SERVICE (Added) ---
+                # --- COMMENT SERVICE ---
                 - id: comment-service
                   uri: lb://comment-service
                   predicates:
@@ -110,6 +110,27 @@ spring:
                       - Path=/v3/api-docs/comments/**
                   filters:
                       - "RewritePath=/v3/api-docs/comments/(?<segment>.*), /v3/api-docs/${segment}"
+
+                # --- NOTIFICATION SERVICE ---
+                - id: notification-service
+                  uri: lb://notification-service
+                  predicates:
+                      - Path=/api/v1/notifications/**
+                  filters:
+                      - "RewritePath=/api/v1/notifications/(?<segment>.*), /${segment}"
+
+                # --- WEBSOCKET ROUTE ---
+                - id: notification-ws
+                  uri: lb://notification-service
+                  predicates:
+                      - Path=/ws-notifications/**
+
+                - id: notification-openapi
+                  uri: lb://notification-service
+                  predicates:
+                      - Path=/v3/api-docs/notifications/**
+                  filters:
+                      - "RewritePath=/v3/api-docs/notifications/(?<segment>.*), /v3/api-docs/${segment}"
 
 eureka:
     client:
@@ -142,3 +163,5 @@ springdoc:
               url: "/v3/api-docs/versions"
             - name: "Comment Service"
               url: "/v3/api-docs/comments"
+            - name: "Notification Service"
+              url: "/v3/api-docs/notifications"

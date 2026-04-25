@@ -41,7 +41,7 @@ public class ExecutionJobListener {
 		try {
 			String image = getDockerImage(job.getLanguage());
 
-			// Create Container with strict resource limits [cite: 46, 54, 769]
+			// Create Container with strict resource limits 
 			HostConfig hostConfig = HostConfig.newHostConfig()
 					.withMemory(256 * 1024 * 1024L) // Max 256MB RAM
 					.withCpuQuota(100000L)          // CPU Limit
@@ -61,7 +61,7 @@ public class ExecutionJobListener {
 			WaitContainerResultCallback waitCallback = new WaitContainerResultCallback();
 			dockerClient.waitContainerCmd(containerId).exec(waitCallback);
 
-			// Enforce the 10-second execution limit [cite: 54, 769]
+			// Enforce the 10-second execution limit 
 			boolean finished = waitCallback.awaitCompletion(10, TimeUnit.SECONDS);
 
 			if (!finished) {

@@ -26,7 +26,7 @@ public class ExecutionServiceImpl implements ExecutionService {
 		job.setStatus("QUEUED");
 		ExecutionJob savedJob = repository.save(job);
 
-		// Push to RabbitMQ for worker to process [cite: 510]
+		// Push to RabbitMQ for worker to process
 		rabbitTemplate.convertAndSend(RabbitMQConfig.EXECUTION_EXCHANGE, "execution.run", savedJob.getJobId());
 		return savedJob;
 	}

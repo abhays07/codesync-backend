@@ -8,6 +8,7 @@ import com.authservice.config.JwtUtils;
 import com.authservice.entity.User;
 import com.authservice.repository.UserRepository;
 import com.authservice.service.AuthService;
+import com.authservice.service.EmailService;
 
 import java.util.List;
 
@@ -21,11 +22,19 @@ public class AuthServiceImpl implements AuthService {
 	@Autowired
 	private JwtUtils jwtUtils;
 
+	@Autowired
+	private EmailService emailService;
+
 	@Override
 	public User register(User user) {
 		// Encode password before saving
 		user.setPasswordHash(passwordEncoder.encode(user.getPasswordHash()));
-		return userRepository.save(user);
+
+		User savedUser = userRepository.save(user);
+		new Thread(() -> {
+			emailService.sendWelcomeEmail(savedUser.getEmail(), savedUser.getUsername());
+		}).start();
+		return savedUser;
 	}
 
 	@Override
@@ -33,7 +42,7 @@ public class AuthServiceImpl implements AuthService {
 		User user = userRepository.findByUsername(username).orElseThrow(() -> new RuntimeException("User not found"));
 
 		if (passwordEncoder.matches(password, user.getPasswordHash())) {
-			return jwtUtils.generateToken(username); // Requirement: JWT generation 
+			return jwtUtils.generateToken(username); // Requirement: JWT generation
 		} else {
 			throw new RuntimeException("Invalid credentials");
 		}
@@ -94,7 +103,7 @@ public class AuthServiceImpl implements AuthService {
 	@Override
 	public void deactivateAccount(int userId) {
 		User user = getUserById(userId);
-		user.setActive(false); // Soft delete as per requirements 
+		user.setActive(false); // Soft delete as per requirements
 		userRepository.save(user);
 	}
 

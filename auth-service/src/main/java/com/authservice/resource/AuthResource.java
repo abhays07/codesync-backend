@@ -71,6 +71,7 @@ public class AuthResource {
 		response.put("token", token);
 		response.put("userId", user.getUserId());
 		response.put("username", user.getUsername());
+		response.put("email", user.getEmail());
 		return ResponseEntity.ok(response);
 	}
 

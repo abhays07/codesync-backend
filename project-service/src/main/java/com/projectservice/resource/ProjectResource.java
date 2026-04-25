@@ -97,4 +97,11 @@ public class ProjectResource {
 	public ResponseEntity<List<ProjectMember>> getMembers(@PathVariable int projectId) {
 		return ResponseEntity.ok(projectService.getProjectMembers(projectId));
 	}
+
+	@DeleteMapping("/{projectId}/members/{userId}")
+	public ResponseEntity<Void> removeMember(@PathVariable int projectId, @PathVariable int userId) {
+		projectService.removeProjectMember(projectId, userId);
+		return ResponseEntity.ok().build();
+	}
+
 }

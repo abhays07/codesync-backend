@@ -36,4 +36,6 @@ public interface ProjectService {
 	List<ProjectMember> getPendingRequests(int projectId);
 
 	List<ProjectMember> getProjectMembers(int projectId);
+
+	void removeProjectMember(int projectId, int userId);
 }

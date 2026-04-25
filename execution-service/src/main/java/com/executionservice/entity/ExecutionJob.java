@@ -24,7 +24,7 @@ public class ExecutionJob {
 	@Column(columnDefinition = "TEXT")
 	private String stdin;
 
-	private String status; // QUEUED, RUNNING, COMPLETED, FAILED [cite: 52]
+	private String status; // QUEUED, RUNNING, COMPLETED, FAILED 
 
 	@Column(columnDefinition = "TEXT")
 	private String stdout;

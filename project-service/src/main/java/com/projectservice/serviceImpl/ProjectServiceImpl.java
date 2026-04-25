@@ -170,7 +170,7 @@ public class ProjectServiceImpl implements ProjectService {
 			throw new RuntimeException("File system cloning failed: " + e.getMessage());
 		}
 
-		// 3. Update original project metrics 
+		// 3. Update original project metrics
 		source.setForkCount(source.getForkCount() + 1);
 		projectRepository.save(source);
 
@@ -227,4 +227,14 @@ public class ProjectServiceImpl implements ProjectService {
 		return memberRepository.findByProjectId(projectId).stream().filter(m -> "EDITOR".equals(m.getRole()))
 				.collect(Collectors.toList());
 	}
+
+	@Override
+	@Transactional
+	public void removeProjectMember(int projectId, int userId) {
+		ProjectMember member = memberRepository.findByProjectIdAndUserId(projectId, userId)
+				.orElseThrow(() -> new RuntimeException("Project member not found"));
+
+		memberRepository.delete(member);
+	}
+
 }
