@@ -1,0 +1,72 @@
+package com.authservice.service;
+
+import jakarta.mail.internet.MimeMessage;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.stereotype.Service;
+
+@Service
+public class EmailService {
+
+	@Autowired
+	private JavaMailSender mailSender;
+
+	public void sendWelcomeEmail(String toEmail, String username) {
+		String subject = "🎉 Welcome to CodeSync - Let's Build Together!";
+
+		String htmlTemplate = """
+				<!DOCTYPE html>
+				<html>
+				<head>
+				    <style>
+				        body { margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Inter', sans-serif; }
+				        .container { width: 100%%; background-color: #f8fafc; padding: 40px 0; }
+				        .card { background-color: #ffffff; margin: 0 auto; max-width: 550px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #e2e8f0; }
+				        .header { background-color: #070F2B; padding: 40px 30px; text-align: center; }
+				        .content { padding: 40px; text-align: center; }
+				        .welcome-badge { display: inline-block; padding: 6px 14px; border-radius: 50px; font-size: 12px; font-weight: 700; border: 1px solid #9290C3; color: #535C91; background-color: #f8fafc; margin-bottom: 20px; }
+				        .title { font-size: 28px; font-weight: 800; color: #070F2B; margin: 10px 0; }
+				        .msg { color: #64748b; font-size: 16px; line-height: 1.6; margin-bottom: 30px; }
+				        .btn { background-color: #535C91; color: #ffffff !important; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 600; display: inline-block; }
+				        .footer { padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; }
+				    </style>
+				</head>
+				<body>
+				    <div class='container'>
+				        <div class='card'>
+				            <div class='header'>
+				                <h1 style='color:white; margin:0; font-size: 36px;'>Code<span style='color:#9290C3'>Sync</span></h1>
+				                <p style='color:#9290C3; margin-top:10px; font-size:14px; letter-spacing: 1px;'>ONLINE COLLABORATION PLATFORM</p>
+				            </div>
+				            <div class='content'>
+				                <div class='welcome-badge'>Welcome Aboard! 🚀</div>
+				                <h3 style='margin-top:0;'>Hi %s,</h3>
+				                <div class='title'>Ready to build together?</div>
+				                <p class='msg'>We are absolutely thrilled to welcome you to CodeSync! Dive into a world of seamless real-time code collaboration, secure microservices architecture, and dynamic project mentorship. Your journey to build better software starts right here.</p>
+				                <a href='http://localhost:5173/dashboard' class='btn'>Explore Dashboard</a>
+				            </div>
+				        </div>
+				        <div class='footer'>CodeSync Microservices Framework • Bhopal, India<br>You received this email because you registered a new account.</div>
+				    </div>
+				</body>
+				</html>
+				"""
+				.formatted(username);
+
+		try {
+			MimeMessage mimeMessage = mailSender.createMimeMessage();
+			MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+			helper.setTo(toEmail);
+			helper.setSubject(subject);
+			helper.setText(htmlTemplate, true);
+
+			mailSender.send(mimeMessage);
+			System.out.println("Welcome email sent successfully to " + toEmail);
+		} catch (Exception e) {
+			System.err.println("Error sending welcome email: " + e.getMessage());
+		}
+	}
+}

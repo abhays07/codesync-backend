@@ -1,0 +1,70 @@
+server:
+    port: 8087
+
+spring:
+    application:
+        name: notification-service
+    datasource:
+        url: jdbc:mysql://${DB_HOST:localhost}:3306/codesync_notification_db?createDatabaseIfNotExist=true
+        username: ${DB_USER}
+        password: ${DB_PASSWORD}
+        driver-class-name: com.mysql.cj.jdbc.Driver
+    jpa:
+        hibernate:
+            ddl-auto: update
+        show-sql: true
+        properties:
+            hibernate:
+                # Use the modern dialect to resolve the HHH90000026 warning
+                dialect: org.hibernate.dialect.MySQLDialect
+        open-in-view: false
+
+    # --- CRITICAL: Mail Configuration with Timeout Fixes ---
+    mail:
+        host: smtp.gmail.com
+        port: 587
+        username: ${EMAIL_USERNAME} # Set in System Environment Variables
+        password: ${EMAIL_APP_PASSWORD} # Use a 16-character Google App Password
+        properties:
+            mail:
+                smtp:
+                    auth: true
+                    starttls:
+                        enable: true
+                    # Added timeouts to prevent the 14s startup delay seen in your logs
+                    connectiontimeout: 5000
+                    timeout: 5000
+                    writetimeout: 5000
+
+    # RabbitMQ: Ensure your Docker container is running on this port
+    rabbitmq:
+        host: localhost
+        port: 5672
+        username: guest
+        password: guest
+
+eureka:
+    client:
+        service-url:
+            defaultZone: http://localhost:8761/eureka/
+    instance:
+        prefer-ip-address: true
+
+springdoc:
+    api-docs:
+        path: /v3/api-docs
+    swagger-ui:
+        path: /swagger-ui.html
+
+# Monitoring Configuration
+management:
+    endpoints:
+        web:
+            exposure:
+                include: "*"
+    endpoint:
+        health:
+            show-details: always
+        # Prevents slow startup if SMTP is temporarily unreachable
+        mail:
+            enabled: false

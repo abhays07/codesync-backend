@@ -1,0 +1,181 @@
+server:
+    port: 9000
+
+spring:
+    application:
+        name: api-gateway
+    cloud:
+        gateway:
+            globalcors:
+                add-to-simple-url-handler-mapping: true
+                cors-configurations:
+                    "[/**]":
+                        allowedOrigins: "http://localhost:5173"
+                        allowedMethods: "*"
+                        allowedHeaders: "*"
+                        allowCredentials: true
+            discovery:
+                locator:
+                    enabled: true
+                    lower-case-service-id: true
+            routes:
+                # --- AUTH SERVICE ---
+                - id: auth-service
+                  uri: lb://auth-service
+                  predicates:
+                      - Path=/api/v1/auth/**
+                - id: auth-openapi
+                  uri: lb://auth-service
+                  predicates:
+                      - Path=/v3/api-docs/auth/**
+                  filters:
+                      - "RewritePath=/v3/api-docs/auth/(?<segment>.*), /v3/api-docs/${segment}"
+
+                # --- PROJECT SERVICE ---
+                - id: project-service
+                  uri: lb://project-service
+                  predicates:
+                      - Path=/api/v1/projects/**
+                - id: project-openapi
+                  uri: lb://project-service
+                  predicates:
+                      - Path=/v3/api-docs/projects/**
+                  filters:
+                      - "RewritePath=/v3/api-docs/projects/(?<segment>.*), /v3/api-docs/${segment}"
+
+                # --- FILE SERVICE ---
+                - id: file-service
+                  uri: lb://file-service
+                  predicates:
+                      - Path=/api/v1/files/**
+                - id: file-openapi
+                  uri: lb://file-service
+                  predicates:
+                      - Path=/v3/api-docs/files/**
+                  filters:
+                      - "RewritePath=/v3/api-docs/files/(?<segment>.*), /v3/api-docs/${segment}"
+
+                # --- COLLAB SERVICE ---
+                - id: collab-service
+                  uri: lb://collab-service
+                  predicates:
+                      - Path=/api/v1/sessions/**
+                  filters:
+                      - "RewritePath=/api/v1/sessions/(?<segment>.*), /${segment}"
+                - id: collab-openapi
+                  uri: lb://collab-service
+                  predicates:
+                      - Path=/v3/api-docs/sessions/**
+                  filters:
+                      - "RewritePath=/v3/api-docs/sessions/(?<segment>.*), /v3/api-docs/${segment}"
+
+                # --- EXECUTION SERVICE ---
+                - id: execution-service
+                  uri: lb://execution-service
+                  predicates:
+                      - Path=/api/v1/executions/**
+                  filters:
+                      - "RewritePath=/api/v1/executions/(?<segment>.*), /${segment}"
+                - id: execution-openapi
+                  uri: lb://execution-service
+                  predicates:
+                      - Path=/v3/api-docs/executions/**
+                  filters:
+                      - "RewritePath=/v3/api-docs/executions/(?<segment>.*), /v3/api-docs/${segment}"
+
+                # --- VERSION SERVICE ---
+                - id: version-service
+                  uri: lb://version-service
+                  predicates:
+                      - Path=/api/v1/versions/**
+                  filters:
+                      - "RewritePath=/api/v1/versions/(?<segment>.*), /${segment}"
+                - id: version-openapi
+                  uri: lb://version-service
+                  predicates:
+                      - Path=/v3/api-docs/versions/**
+                  filters:
+                      - "RewritePath=/v3/api-docs/versions/(?<segment>.*), /v3/api-docs/${segment}"
+
+                # --- COMMENT SERVICE ---
+                - id: comment-service
+                  uri: lb://comment-service
+                  predicates:
+                      - Path=/api/v1/comments/**
+                  filters:
+                      - "RewritePath=/api/v1/comments/(?<segment>.*), /${segment}"
+                - id: comment-openapi
+                  uri: lb://comment-service
+                  predicates:
+                      - Path=/v3/api-docs/comments/**
+                  filters:
+                      - "RewritePath=/v3/api-docs/comments/(?<segment>.*), /v3/api-docs/${segment}"
+
+                # --- NOTIFICATION SERVICE ---
+                - id: notification-service
+                  uri: lb://notification-service
+                  predicates:
+                      - Path=/api/v1/notifications/**
+                  filters:
+                      - "RewritePath=/api/v1/notifications/(?<segment>.*), /${segment}"
+                - id: notification-openapi
+                  uri: lb://notification-service
+                  predicates:
+                      - Path=/v3/api-docs/notifications/**
+                  filters:
+                      - "RewritePath=/v3/api-docs/notifications/(?<segment>.*), /v3/api-docs/${segment}"
+
+                # --- WEBSOCKET ROUTE ---
+                - id: notification-ws
+                  uri: lb://notification-service
+                  predicates:
+                      - Path=/ws-notifications/**
+
+                # --- PAYMENT SERVICE ---
+                - id: payment-service
+                  uri: lb://payment-service
+                  predicates:
+                      - Path=/api/v1/payments/**
+                - id: payment-openapi
+                  uri: lb://payment-service
+                  predicates:
+                      - Path=/v3/api-docs/payments/**
+                  filters:
+                      - "RewritePath=/v3/api-docs/payments/(?<segment>.*), /v3/api-docs/${segment}"
+
+eureka:
+    client:
+        service-url:
+            defaultZone: http://localhost:8761/eureka/
+    instance:
+        prefer-ip-address: false
+        hostname: localhost
+
+management:
+    endpoints:
+        web:
+            exposure:
+                include: "*"
+
+springdoc:
+    swagger-ui:
+        urls:
+            - name: "Auth Service"
+              url: "/v3/api-docs/auth"
+            - name: "Project Service"
+              url: "/v3/api-docs/projects"
+            - name: "File Service"
+              url: "/v3/api-docs/files"
+            - name: "Collab Service"
+              url: "/v3/api-docs/sessions"
+            - name: "Execution Service"
+              url: "/v3/api-docs/executions"
+            - name: "Version Service"
+              url: "/v3/api-docs/versions"
+            - name: "Comment Service"
+              url: "/v3/api-docs/comments"
+            - name: "Notification Service"
+              url: "/v3/api-docs/notifications"
+            # PAYMENT SERVICE TO SWAGGER DROPDOWN
+            - name: "Payment Service"
+              url: "/v3/api-docs/payments"
