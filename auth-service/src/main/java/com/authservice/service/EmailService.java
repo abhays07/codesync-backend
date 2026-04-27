@@ -69,4 +69,58 @@ public class EmailService {
 			System.err.println("Error sending welcome email: " + e.getMessage());
 		}
 	}
+
+	public void sendOtpEmail(String toEmail, String otp) {
+		String subject = "🔐 Password Reset OTP - CodeSync";
+
+		String htmlTemplate = """
+				<!DOCTYPE html>
+				<html>
+				<head>
+				    <style>
+				        body { margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Inter', sans-serif; }
+				        .container { width: 100%%; background-color: #f8fafc; padding: 40px 0; }
+				        .card { background-color: #ffffff; margin: 0 auto; max-width: 550px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #e2e8f0; }
+				        .header { background-color: #070F2B; padding: 40px 30px; text-align: center; }
+				        .content { padding: 40px; text-align: center; }
+				        .otp-badge { display: inline-block; padding: 12px 24px; border-radius: 8px; font-size: 24px; font-weight: 800; border: 2px dashed #9290C3; color: #535C91; background-color: #f8fafc; margin: 20px 0; letter-spacing: 4px;}
+				        .title { font-size: 24px; font-weight: 800; color: #070F2B; margin: 10px 0; }
+				        .msg { color: #64748b; font-size: 16px; line-height: 1.6; margin-bottom: 30px; }
+				        .footer { padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; }
+				    </style>
+				</head>
+				<body>
+				    <div class='container'>
+				        <div class='card'>
+				            <div class='header'>
+				                <h1 style='color:white; margin:0; font-size: 36px;'>Code<span style='color:#9290C3'>Sync</span></h1>
+				            </div>
+				            <div class='content'>
+				                <div class='title'>Password Reset Request</div>
+				                <p class='msg'>We received a request to reset your password. Use the OTP below to proceed. This OTP is valid for 10 minutes.</p>
+				                <div class='otp-badge'>%s</div>
+				                <p class='msg' style='font-size: 14px;'>If you didn't request this, you can safely ignore this email.</p>
+				            </div>
+				        </div>
+				        <div class='footer'>CodeSync Microservices Framework • Security Team</div>
+				    </div>
+				</body>
+				</html>
+				"""
+				.formatted(otp);
+
+		try {
+			MimeMessage mimeMessage = mailSender.createMimeMessage();
+			MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+			helper.setTo(toEmail);
+			helper.setSubject(subject);
+			helper.setText(htmlTemplate, true);
+
+			mailSender.send(mimeMessage);
+			System.out.println("OTP email sent successfully to " + toEmail);
+		} catch (Exception e) {
+			System.err.println("Error sending OTP email: " + e.getMessage());
+		}
+	}
 }

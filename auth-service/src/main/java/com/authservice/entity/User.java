@@ -20,7 +20,7 @@ public class User {
 	private int userId;
 
 	@NotBlank(message = "Username is required")
-	@Size(min = 4, max = 20, message = "Username must be between 4-20 characters")
+	@Size(min = 4, max = 50, message = "Username must be between 4-50 characters")
 	@Column(unique = true, nullable = false)
 	private String username;
 
@@ -44,6 +44,12 @@ public class User {
 	private boolean isActive = true;
 	private LocalDateTime createdAt = LocalDateTime.now();
 	private String bio;
+	private String githubLink;
+	private String linkedinLink;
+	private String twitterLink;
+	
+	private String resetOtp;
+	private LocalDateTime otpExpiry;
 
 	// Constructor for reference-based tasks
 	public User(int userId) {

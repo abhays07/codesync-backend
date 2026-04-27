@@ -33,6 +33,12 @@ public class Notification {
 	private boolean isRead = false;
 	private LocalDateTime createdAt;
 
+	@Transient
+	private String projectName;
+	
+	@Transient
+	private String recipientName;
+
 	@PrePersist
 	protected void onCreate() {
 		this.createdAt = LocalDateTime.now();

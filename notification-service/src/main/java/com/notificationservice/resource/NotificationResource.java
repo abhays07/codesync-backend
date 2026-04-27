@@ -31,6 +31,18 @@ public class NotificationResource {
 		return ResponseEntity.noContent().build();
 	}
 
+	@PatchMapping("/read-all/{userId}")
+	public ResponseEntity<Void> markAllAsRead(@PathVariable Integer userId) {
+		notificationService.markAllAsRead(userId);
+		return ResponseEntity.noContent().build();
+	}
+
+	@DeleteMapping("/{id}")
+	public ResponseEntity<Void> deleteNotification(@PathVariable Long id) {
+		notificationService.deleteNotification(id);
+		return ResponseEntity.noContent().build();
+	}
+
 	@DeleteMapping("/user/{userId}")
 	public ResponseEntity<Void> clearHistory(@PathVariable Integer userId) {
 		notificationService.clearAllNotifications(userId);

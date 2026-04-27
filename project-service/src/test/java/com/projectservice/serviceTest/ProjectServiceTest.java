@@ -38,7 +38,7 @@ public class ProjectServiceTest {
 
 		// Act & Assert
 		RuntimeException ex = assertThrows(RuntimeException.class, () -> {
-			projectService.forkProject(1, 99);
+			projectService.forkProject(1, 99, "OWNER Name");
 		});
 
 		assertTrue(ex.getMessage().contains("Only public projects can be forked"));

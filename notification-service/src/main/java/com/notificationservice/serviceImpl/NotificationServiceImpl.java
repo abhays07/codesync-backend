@@ -37,9 +37,9 @@ public class NotificationServiceImpl implements NotificationService {
 			String msg = notification.getMessage().toLowerCase();
 			boolean isApproved = msg.contains("approved") || msg.contains("granted");
 
-			// Simple parser to make emails feel personalized
-			String requesterName = (notification.getSenderName() != null) ? notification.getSenderName() : "Developer";
-			String projectName = "CodeSync Project";
+			String requesterName = (notification.getRecipientName() != null) ? notification.getRecipientName() : 
+                                   (notification.getSenderName() != null ? notification.getSenderName() : "Developer");
+			String projectName = (notification.getProjectName() != null) ? notification.getProjectName() : "CodeSync Project";
 
 			emailService.sendHtmlEmail(memberEmails, requesterName, projectName, isApproved);
 		}

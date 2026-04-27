@@ -50,8 +50,13 @@ public class ProjectResource {
 	}
 
 	@PostMapping("/{id}/fork")
-	public ResponseEntity<Project> fork(@PathVariable int id, @RequestParam int userId) {
-		return ResponseEntity.ok(projectService.forkProject(id, userId));
+	public ResponseEntity<Project> fork(@PathVariable int id, @RequestParam int userId, @RequestParam String username) {
+		return ResponseEntity.ok(projectService.forkProject(id, userId, username));
+	}
+
+	@PutMapping("/{id}")
+	public ResponseEntity<Project> updateProject(@PathVariable int id, @RequestBody Project project) {
+		return ResponseEntity.ok(projectService.updateProject(id, project));
 	}
 
 	// --- COLLABORATION ENDPOINTS ---

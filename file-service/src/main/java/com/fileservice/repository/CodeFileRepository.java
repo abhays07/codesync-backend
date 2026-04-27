@@ -20,5 +20,5 @@ public interface CodeFileRepository extends JpaRepository<CodeFile, Long> {
 	List<CodeFile> findByProjectIdAndIsDeletedFalse(int projectId);
 
 	// Requirement: Find text patterns across all non-deleted project files
-	List<CodeFile> findByProjectIdAndContentContainingAndIsDeletedFalse(int projectId, String query);
+	List<CodeFile> findByProjectIdAndContentContainingIgnoreCaseAndIsDeletedFalse(int projectId, String query);
 }

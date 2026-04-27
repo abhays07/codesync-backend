@@ -84,6 +84,10 @@ public class FileServiceImpl implements FileService {
 		readme.setContent("# Welcome to CodeSync\nCreated at: " + LocalDateTime.now());
 		readme.setProjectId(projectId);
 		readme.setPath("README.md");
+		readme.setSize((long) readme.getContent().length());
+		// Set safe default IDs to prevent constraint violations
+		readme.setCreatedById(1);
+		readme.setLastEditedBy(1);
 		fileRepository.save(readme);
 	}
 
@@ -195,6 +199,6 @@ public class FileServiceImpl implements FileService {
 
 	@Override
 	public List<CodeFile> searchInProject(int pid, String q) {
-		return fileRepository.findByProjectIdAndContentContainingAndIsDeletedFalse(pid, q);
+		return fileRepository.findByProjectIdAndContentContainingIgnoreCaseAndIsDeletedFalse(pid, q);
 	}
 }

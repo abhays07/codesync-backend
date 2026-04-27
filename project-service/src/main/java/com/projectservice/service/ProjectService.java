@@ -13,7 +13,7 @@ public interface ProjectService {
 
 	Project getProjectById(int projectId);
 
-	Project forkProject(int sourceProjectId, int newOwnerId);
+	Project forkProject(int sourceProjectId, int newOwnerId, String ownerUsername);
 
 	void starProject(int projectId, int userId);
 

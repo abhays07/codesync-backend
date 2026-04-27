@@ -25,6 +25,10 @@ public interface AuthService {
 
 	void changePassword(int userId, String newPassword);
 
+	void sendPasswordResetOtp(String email);
+	
+	void resetPasswordWithOtp(String email, String otp, String newPassword);
+
 	List<User> searchUsers(String query);
 
 	void deactivateAccount(int userId);

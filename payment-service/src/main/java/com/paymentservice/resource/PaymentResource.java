@@ -1,9 +1,14 @@
 package com.paymentservice.resource;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -54,11 +59,44 @@ public class PaymentResource {
 			return repository.findByRazorpayOrderId(request.getRazorpay_order_id()).map(p -> {
 				p.setStatus("SUCCESS");
 				repository.save(p);
+
 				// Async push to Notification-Service via RabbitMQ
 				producer.sendPaymentSuccessNotification(p.getUserEmail(), p.getRazorpayOrderId(), p.getAmount());
 				return ResponseEntity.ok(Map.of("status", "success"));
 			}).orElse(ResponseEntity.status(404).body(Map.of("message", "Order record not found")));
 		}
+
 		return ResponseEntity.status(400).body(Map.of("status", "failure", "message", "Invalid payment signature"));
+	}
+
+	// Verifies active subscription status and returns billing details
+	@GetMapping("/status/{userId}")
+	public ResponseEntity<?> getSubscriptionStatus(@PathVariable String userId) {
+
+		// Fetch the most recent successful payment
+		List<PaymentOrder> orders = repository.findByUserIdAndStatusOrderByCreatedAtDesc(userId, "SUCCESS");
+
+		if (orders.isEmpty()) {
+			Map<String, Object> response = new HashMap<>();
+			response.put("isSubscribed", false);
+			return ResponseEntity.ok(response);
+		}
+
+		PaymentOrder latestPayment = orders.get(0);
+
+		// Calculate Expiry 30 days from purchase date
+		LocalDateTime expiryDate = latestPayment.getCreatedAt().plusDays(30);
+		boolean isActive = LocalDateTime.now().isBefore(expiryDate);
+
+		// Safely build the response map using Strings for Dates to prevent Jackson
+		// Serialization crashes
+		Map<String, Object> response = new HashMap<>();
+		response.put("isSubscribed", isActive);
+		response.put("purchaseDate",
+				latestPayment.getCreatedAt() != null ? latestPayment.getCreatedAt().toString() : null);
+		response.put("expiryDate", expiryDate.toString());
+		response.put("amount", latestPayment.getAmount());
+
+		return ResponseEntity.ok(response);
 	}
 }

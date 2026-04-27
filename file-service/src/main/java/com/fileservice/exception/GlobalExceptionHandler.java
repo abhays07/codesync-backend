@@ -24,8 +24,9 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<Map<String, String>> handleGeneralException(Exception ex) {
+		ex.printStackTrace(); // Log the actual error to the console for debugging
 		Map<String, String> response = new HashMap<>();
-		response.put("message", "A file system error occurred. Please try again.");
+		response.put("message", "A file system error occurred: " + ex.getMessage());
 		response.put("status", "error");
 		return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
 	}

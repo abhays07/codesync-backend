@@ -24,7 +24,7 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<Map<String, String>> handleGeneralException(Exception ex) {
 		Map<String, String> response = new HashMap<>();
-		response.put("message", "Container engine is busy. Please try executing code in a moment.");
+		response.put("message", ex.getMessage() != null ? ex.getMessage() : ex.getClass().getName());
 		response.put("status", "error");
 		return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
 	}

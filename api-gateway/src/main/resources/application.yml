@@ -48,15 +48,26 @@ spring:
                   uri: lb://collab-service
                   predicates:
                       - Path=/api/v1/sessions/**
-                  filters:
-                      - RewritePath=/api/v1/sessions/(?<segment>.*), /${segment}
 
                 - id: execution-service
                   uri: lb://execution-service
                   predicates:
                       - Path=/api/v1/executions/**
-                  filters:
-                      - RewritePath=/api/v1/executions/(?<segment>.*), /${segment}
+
+                - id: comment-service
+                  uri: lb://comment-service
+                  predicates:
+                      - Path=/api/v1/comments/**
+
+                - id: notification-service
+                  uri: lb://notification-service
+                  predicates:
+                      - Path=/api/v1/notifications/**
+
+                - id: version-service
+                  uri: lb://version-service
+                  predicates:
+                      - Path=/api/v1/versions/**
 
                 # --- WEBSOCKETS (CRITICAL for Collaboration/Notifications) ---
                 # Note: WebSocket URIs must use lb:ws:// for load balancing

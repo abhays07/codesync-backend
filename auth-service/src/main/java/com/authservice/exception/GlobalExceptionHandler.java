@@ -18,7 +18,18 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(RuntimeException.class)
 	public ResponseEntity<Map<String, String>> handleRuntimeException(RuntimeException ex) {
 		Map<String, String> error = new HashMap<>();
-		error.put("message", ex.getMessage()); // Sends the "User not found" or "Invalid credentials"
+		
+		String message = ex.getMessage();
+		Throwable cause = ex.getCause();
+		while (cause != null) {
+			if (cause instanceof jakarta.validation.ConstraintViolationException) {
+				message = cause.getMessage();
+				break;
+			}
+			cause = cause.getCause();
+		}
+		
+		error.put("message", message);
 		error.put("status", "error");
 		return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
 	}

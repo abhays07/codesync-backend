@@ -79,6 +79,12 @@ public class AuthServiceImpl implements AuthService {
 		user.setFullName(userDetails.getFullName());
 		user.setBio(userDetails.getBio());
 		user.setAvatarUrl(userDetails.getAvatarUrl());
+		if (userDetails.getUsername() != null && !userDetails.getUsername().trim().isEmpty()) {
+			user.setUsername(userDetails.getUsername().trim());
+		}
+		user.setGithubLink(userDetails.getGithubLink());
+		user.setLinkedinLink(userDetails.getLinkedinLink());
+		user.setTwitterLink(userDetails.getTwitterLink());
 		return userRepository.save(user);
 	}
 
@@ -86,6 +92,40 @@ public class AuthServiceImpl implements AuthService {
 	public void changePassword(int userId, String newPassword) {
 		User user = getUserById(userId);
 		user.setPasswordHash(passwordEncoder.encode(newPassword));
+		userRepository.save(user);
+	}
+
+	@Override
+	public void sendPasswordResetOtp(String email) {
+		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found with this email"));
+		
+		// Generate 6-digit OTP
+		String otp = String.format("%06d", new java.util.Random().nextInt(999999));
+		
+		user.setResetOtp(otp);
+		user.setOtpExpiry(java.time.LocalDateTime.now().plusMinutes(10));
+		userRepository.save(user);
+		
+		new Thread(() -> emailService.sendOtpEmail(email, otp)).start();
+	}
+
+	@Override
+	public void resetPasswordWithOtp(String email, String otp, String newPassword) {
+		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+		
+		if (user.getResetOtp() == null || !user.getResetOtp().equals(otp)) {
+			throw new RuntimeException("Invalid OTP");
+		}
+		
+		if (user.getOtpExpiry() == null || user.getOtpExpiry().isBefore(java.time.LocalDateTime.now())) {
+			throw new RuntimeException("OTP has expired");
+		}
+		
+		// Reset password and clear OTP
+		user.setPasswordHash(passwordEncoder.encode(newPassword));
+		user.setResetOtp(null);
+		user.setOtpExpiry(null);
+		
 		userRepository.save(user);
 	}
 

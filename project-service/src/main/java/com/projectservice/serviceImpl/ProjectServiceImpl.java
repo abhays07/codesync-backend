@@ -86,14 +86,15 @@ public class ProjectServiceImpl implements ProjectService {
 
 	@Override
 	@Transactional
-	public Project forkProject(int sourceId, int newOwnerId) {
+	public Project forkProject(int sourceId, int newOwnerId, String newOwnerUsername) {
 		Project source = getProjectById(sourceId);
 		if (!"PUBLIC".equals(source.getVisibility())) {
 			throw new RuntimeException("Collaboration Error: Only public projects can be forked.");
 		}
 
 		Project forked = Project.builder().name(source.getName() + "-fork")
-				.description("Forked from " + source.getName()).ownerId(newOwnerId).language(source.getLanguage())
+				.description("Forked from " + source.getName()).ownerId(newOwnerId).ownerUsername(newOwnerUsername)
+				.language(source.getLanguage())
 				.visibility("PRIVATE").createdAt(LocalDateTime.now()).isArchived(false).build();
 
 		Project savedFork = projectRepository.save(forked);
@@ -153,8 +154,21 @@ public class ProjectServiceImpl implements ProjectService {
 
 	@Override
 	public List<ProjectMember> getProjectMembers(int id) {
-		return memberRepository.findByProjectId(id).stream().filter(m -> "EDITOR".equals(m.getRole()))
+		List<ProjectMember> members = memberRepository.findByProjectId(id).stream()
+				.filter(m -> "EDITOR".equals(m.getRole()))
 				.collect(Collectors.toList());
+
+		Project project = getProjectById(id);
+		if (project != null) {
+			ProjectMember owner = new ProjectMember();
+			owner.setProjectId(id);
+			owner.setUserId(project.getOwnerId());
+			owner.setUsername(project.getOwnerUsername() != null ? project.getOwnerUsername() : "Owner");
+			owner.setRole("OWNER");
+			members.add(0, owner);
+		}
+		
+		return members;
 	}
 
 	@Override

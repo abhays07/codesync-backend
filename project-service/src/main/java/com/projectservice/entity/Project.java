@@ -22,6 +22,7 @@ public class Project {
 	private int projectId;
 
 	private int ownerId; // Link to Auth-Service User ID
+	private String ownerUsername; // New field for frontend displaying owner profile
 	private String name;
 	private String description;
 	private String language; // Java, Python, etc.

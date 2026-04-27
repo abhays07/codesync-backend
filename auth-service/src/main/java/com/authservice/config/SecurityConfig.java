@@ -32,7 +32,7 @@ public class SecurityConfig {
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http.csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth
 				// Public Endpoints
-				.requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/oauth2/**", "/login/**").permitAll()
+				.requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/send-otp", "/api/v1/auth/reset-password", "/api/v1/auth/profile/**", "/api/v1/auth/me", "/api/v1/auth/search", "/oauth2/**", "/login/**").permitAll()
 				.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 				.requestMatchers("/actuator/**").permitAll()
 				// Secured Endpoints

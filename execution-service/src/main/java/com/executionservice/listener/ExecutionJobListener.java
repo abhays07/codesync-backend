@@ -109,6 +109,7 @@ public class ExecutionJobListener {
 		case "java" -> "amazoncorretto:17-alpine";
 		case "javascript", "nodejs" -> "node:alpine";
 		case "python" -> "python:3.9-slim";
+		case "c", "cpp" -> "gcc:latest";
 		default -> "alpine:latest";
 		};
 	}
@@ -121,6 +122,8 @@ public class ExecutionJobListener {
 		case "java" ->
 			new String[] { "/bin/sh", "-c", "echo '" + escapedCode + "' > Main.java && javac Main.java && java Main" };
 		case "python" -> new String[] { "python", "-c", code };
+		case "c" -> new String[] { "/bin/sh", "-c", "echo '" + escapedCode + "' > main.c && gcc main.c && ./a.out" };
+		case "cpp" -> new String[] { "/bin/sh", "-c", "echo '" + escapedCode + "' > main.cpp && g++ main.cpp && ./a.out" };
 		default -> new String[] { "echo", "Language not supported" };
 		};
 	}

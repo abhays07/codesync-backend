@@ -41,6 +41,7 @@ public class AuthResource {
 		response.put("username", user.getUsername());
 		response.put("email", user.getEmail());
 		response.put("role", user.getRole());
+		response.put("avatarUrl", user.getAvatarUrl());
 
 		return ResponseEntity.ok(response);
 	}
@@ -63,6 +64,7 @@ public class AuthResource {
 		response.put("userId", user.getUserId());
 		response.put("username", user.getUsername());
 		response.put("email", user.getEmail());
+		response.put("avatarUrl", user.getAvatarUrl());
 		return ResponseEntity.ok(response);
 	}
 
@@ -79,5 +81,25 @@ public class AuthResource {
 	@GetMapping("/search")
 	public ResponseEntity<List<User>> searchUsers(@RequestParam String query) {
 		return ResponseEntity.ok(authService.searchUsers(query));
+	}
+
+	@PostMapping("/send-otp")
+	public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> request) {
+		try {
+			authService.sendPasswordResetOtp(request.get("email"));
+			return ResponseEntity.ok(Map.of("message", "OTP sent successfully"));
+		} catch (Exception e) {
+			return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
+		}
+	}
+
+	@PostMapping("/reset-password")
+	public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request) {
+		try {
+			authService.resetPasswordWithOtp(request.get("email"), request.get("otp"), request.get("newPassword"));
+			return ResponseEntity.ok(Map.of("message", "Password reset successfully"));
+		} catch (Exception e) {
+			return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
+		}
 	}
 }
