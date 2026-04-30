@@ -37,9 +37,8 @@ pipeline {
                 dir("${SERVICE_DIR}") {
                     echo "Building Docker image for ${params.SERVICE_NAME}..."
                     script {
-                        // Build the image
-                        dockerImage = docker.build("${DOCKER_IMAGE}:${IMAGE_TAG}")
-                        // Also tag it as latest
+                        // Build and tag the image using native shell commands
+                        sh "docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} ."
                         sh "docker tag ${DOCKER_IMAGE}:${IMAGE_TAG} ${DOCKER_IMAGE}:latest"
                     }
                 }
@@ -50,9 +49,12 @@ pipeline {
             steps {
                 echo "Pushing ${DOCKER_IMAGE} to Docker Hub..."
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', "${DOCKER_HUB_CREDENTIALS_ID}") {
-                        dockerImage.push("${IMAGE_TAG}")
-                        dockerImage.push('latest')
+                    withCredentials([usernamePassword(credentialsId: "${DOCKER_HUB_CREDENTIALS_ID}", passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
+                        // Login to Docker Hub securely
+                        sh "echo \$DOCKER_PASSWORD | docker login -u \$DOCKER_USERNAME --password-stdin"
+                        // Push images
+                        sh "docker push ${DOCKER_IMAGE}:${IMAGE_TAG}"
+                        sh "docker push ${DOCKER_IMAGE}:latest"
                     }
                 }
             }
