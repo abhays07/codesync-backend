@@ -3,7 +3,7 @@ pipeline {
 
     // Define parameters so you can choose which service to deploy from the UI
     parameters {
-        Choice(name: 'SERVICE_NAME', choices: ['auth-service', 'api-gateway', 'eureka-server', 'project-service', 'file-service', 'collab-service', 'execution-service', 'comment-service', 'notification-service', 'payment-service', 'version-service', 'admin-server'], description: 'Select the microservice to build and deploy')
+        choice(name: 'SERVICE_NAME', choices: ['auth-service', 'api-gateway', 'eureka-server', 'project-service', 'file-service', 'collab-service', 'execution-service', 'comment-service', 'notification-service', 'payment-service', 'version-service', 'admin-server'], description: 'Select the microservice to build and deploy')
     }
 
     environment {
