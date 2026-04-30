@@ -25,6 +25,7 @@ pipeline {
             steps {
                 dir("${SERVICE_DIR}") {
                     echo "Building ${params.SERVICE_NAME} with Maven..."
+                    sh 'chmod +x mvnw'
                     // Execute Maven wrapper to build the JAR
                     sh './mvnw clean package -DskipTests'
                 }
