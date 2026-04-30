@@ -63,22 +63,28 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 echo "Updating ${params.SERVICE_NAME} on the deployment server..."
-                // Since Jenkins is running on the SAME EC2 instance via Docker socket,
-                // we can interact with docker directly to restart the specific service.
                 script {
-                    sh """
-                        # Pull the latest image
-                        docker pull ${DOCKER_IMAGE}:latest
-                        
-                        # Navigate to the directory containing docker-compose.yml on the host
-                        # (We assume Jenkins has checked out the repo containing docker-compose.yml here in the workspace)
-                        
-                        # Recreate and start only the updated service in the background
-                        docker-compose up -d --no-deps --build ${params.SERVICE_NAME}
-                        
-                        # Clean up dangling images to save disk space
-                        docker image prune -f
-                    """
+                    // Bring in the .env file securely from Jenkins Credentials
+                    withCredentials([file(credentialsId: 'production-env-file', variable: 'ENV_FILE')]) {
+                        sh """
+                            # Copy the secret .env file into our workspace
+                            cp \$ENV_FILE .env
+                            
+                            # Pull the latest image
+                            docker pull ${DOCKER_IMAGE}:latest
+                            
+                            # Force remove the existing container to prevent naming conflicts
+                            docker stop ${params.SERVICE_NAME} || true
+                            docker rm ${params.SERVICE_NAME} || true
+                            
+                            # Recreate and start only the updated service using the workspace docker-compose
+                            # We use -p codesync to force a uniform project name
+                            docker-compose -p codesync up -d --no-deps ${params.SERVICE_NAME}
+                            
+                            # Clean up dangling images to save disk space
+                            docker image prune -f
+                        """
+                    }
                 }
             }
         }
