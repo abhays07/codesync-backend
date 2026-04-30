@@ -13,6 +13,9 @@ public class EmailService {
 	@Autowired
 	private JavaMailSender mailSender;
 
+	@org.springframework.beans.factory.annotation.Value("${FRONTEND_URL}")
+	private String frontendUrl;
+
 	public void sendWelcomeEmail(String toEmail, String username) {
 		String subject = "🎉 Welcome to CodeSync - Let's Build Together!";
 
@@ -45,7 +48,7 @@ public class EmailService {
 				                <h3 style='margin-top:0;'>Hi %s,</h3>
 				                <div class='title'>Ready to build together?</div>
 				                <p class='msg'>We are absolutely thrilled to welcome you to CodeSync! Dive into a world of seamless real-time code collaboration, secure microservices architecture, and dynamic project mentorship. Your journey to build better software starts right here.</p>
-				                <a href='http://localhost:5173/dashboard' class='btn'>Explore Dashboard</a>
+				                <a href='" + frontendUrl + "/dashboard' class='btn'>Explore Dashboard</a>
 				            </div>
 				        </div>
 				        <div class='footer'>CodeSync Microservices Framework • Bhopal, India<br>You received this email because you registered a new account.</div>

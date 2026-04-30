@@ -1,15 +1,20 @@
 package com.authservice.config;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.authservice.serviceImpl.CustomOAuth2UserService;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import com.authservice.serviceImpl.CustomOAuth2UserService;
-import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
 
 /**
  * Security Configuration - Centralizes Auth Rules Standardizes Password
@@ -19,8 +24,16 @@ import jakarta.servlet.http.HttpServletResponse;
 @EnableWebSecurity
 public class SecurityConfig {
 
-	@Autowired
-	private CustomOAuth2UserService customOAuth2UserService;
+	private final CustomOAuth2UserService customOAuth2UserService;
+	private final String frontendUrl;
+	private final JwtUtils jwtService;
+
+	public SecurityConfig(CustomOAuth2UserService customOAuth2UserService, @Value("${FRONTEND_URL}") String frontendUrl,
+			JwtUtils jwtService) {
+		this.customOAuth2UserService = customOAuth2UserService;
+		this.frontendUrl = frontendUrl;
+		this.jwtService = jwtService;
+	}
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {
@@ -30,17 +43,21 @@ public class SecurityConfig {
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-		http.csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth
-				// Public Endpoints
-				.requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/send-otp", "/api/v1/auth/reset-password", "/api/v1/auth/profile/**", "/api/v1/auth/me", "/api/v1/auth/search", "/oauth2/**", "/login/**").permitAll()
-				.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-				.requestMatchers("/actuator/**").permitAll()
-				// Secured Endpoints
-				.anyRequest().authenticated())
-				.oauth2Login(
-						oauth2 -> oauth2.userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
-								// Frontend callback after Google/GitHub login
-								.defaultSuccessUrl("http://localhost:5173/oauth-success", true))
+		http.csrf(csrf -> csrf.disable())
+				.authorizeHttpRequests(
+						auth -> auth.requestMatchers("/api/v1/auth/**", "/oauth2/**", "/login/**", "/error").permitAll()
+								.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+								.requestMatchers("/actuator/**").permitAll().anyRequest().authenticated())
+				.oauth2Login(oauth2 -> oauth2
+						.authorizationEndpoint(auth -> auth.baseUri("/api/v1/auth/oauth2/authorization"))
+						.redirectionEndpoint(red -> red.baseUri("/api/v1/auth/login/oauth2/code/*"))
+						.userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+						.successHandler((request, response, authentication) -> {
+							// Generate Token for the OAuth User
+							String token = jwtService.generateToken(authentication.getName());
+							// Redirect to frontend with token in URL
+							response.sendRedirect(frontendUrl + "/oauth-success?token=" + token);
+						}))
 				.exceptionHandling(
 						exception -> exception.authenticationEntryPoint((request, response, authException) -> {
 							// Prevents 302 Redirect; sends 401 JSON for easier Frontend handling

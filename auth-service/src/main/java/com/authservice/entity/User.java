@@ -38,6 +38,7 @@ public class User {
 	@Column(name = "user_role")
 	private String role = "DEVELOPER"; // Default role
 
+	@Column(columnDefinition = "LONGTEXT")
 	private String avatarUrl;
 	private String provider = "LOCAL"; // LOCAL, GITHUB, GOOGLE
 

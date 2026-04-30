@@ -8,6 +8,9 @@ import org.springframework.web.socket.config.annotation.*;
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
+    @org.springframework.beans.factory.annotation.Value("${FRONTEND_URL}")
+    private String frontendUrl;
+
 	@Override
 	public void configureMessageBroker(MessageBrokerRegistry config) {
 		// Enable a simple memory-based message broker
@@ -20,6 +23,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 	@Override
 	public void registerStompEndpoints(StompEndpointRegistry registry) {
 		// Port 8087 WebSocket endpoint for the React frontend
-		registry.addEndpoint("/ws-notifications").setAllowedOrigins("http://localhost:5173").withSockJS();
+		registry.addEndpoint("/ws-notifications").setAllowedOrigins(frontendUrl).withSockJS();
 	}
 }

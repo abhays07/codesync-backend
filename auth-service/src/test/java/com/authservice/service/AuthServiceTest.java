@@ -54,7 +54,7 @@ public class AuthServiceTest {
 		when(userRepository.save(any(User.class))).thenReturn(testUser);
 
 		// Act: Call the service method
-		User savedUser = authService.register(testUser);
+		User savedUser = authService.register(testUser, "090987");
 
 		// Assert: Verify outcomes and security requirements
 		assertNotNull(savedUser);
@@ -69,7 +69,7 @@ public class AuthServiceTest {
 
 		// Act & Assert: Verify our custom error message is thrown
 		RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-			authService.register(testUser);
+			authService.register(testUser, "090987");
 		});
 
 		assertEquals("Email already registered", exception.getMessage());

@@ -1,0 +1,198 @@
+version: "3.8"
+
+# COMMON ENV (MUST BE OUTSIDE services)
+x-common-env: &common-env
+  DB_HOST: ${DB_HOST}
+  DB_USER: ${DB_USER}
+  DB_PASSWORD: ${DB_PASSWORD}
+  EUREKA_HOST: eureka-server
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+  EUREKA_INSTANCE_PREFER_IP_ADDRESS: true
+  SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: 1
+  SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: 1
+
+services:
+
+  # --- INFRASTRUCTURE ---
+  eureka-server:
+    image: abhays2004/codesync-eureka:latest
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8761/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 30s
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: codesync-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # --- GATEWAY ---
+  api-gateway:
+    image: abhays2004/codesync-gateway:latest
+    container_name: api-gateway
+    ports:
+      - "9000:9000"
+    environment:
+      - EUREKA_HOST=eureka-server
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  admin-server:
+    image: abhays2004/codesync-admin:latest
+    container_name: admin-server
+    ports:
+      - "9090:9090"
+    environment:
+      <<: *common-env
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  # --- SERVICES ---
+
+  auth-service:
+    image: abhays2004/codesync-auth:latest
+    container_name: auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      <<: *common-env
+      FRONTEND_URL: ${FRONTEND_URL}
+      BACKEND_GATEWAY_URL: http://65.1.129.94.nip.io:9000/api/v1/auth
+      JWT_SECRET: ${JWT_SECRET}
+      EMAIL_USERNAME: ${EMAIL_USERNAME}
+      EMAIL_APP_PASSWORD: "${EMAIL_APP_PASSWORD}"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  project-service:
+    image: abhays2004/codesync-project:latest
+    container_name: project-service
+    ports:
+      - "8082:8082"
+    environment:
+      <<: *common-env
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  file-service:
+    image: abhays2004/codesync-file:latest
+    container_name: file-service
+    ports:
+      - "8083:8083"
+    environment:
+      <<: *common-env
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  collab-service:
+    image: abhays2004/codesync-collab:latest
+    container_name: collab-service
+    ports:
+      - "8084:8084"
+    environment:
+      <<: *common-env
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  execution-service:
+    image: abhays2004/codesync-execution:latest
+    container_name: execution-service
+    ports:
+      - "8085:8085"
+    environment:
+      <<: *common-env
+      SPRING_RABBITMQ_HOST: rabbitmq
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    user: root
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  comment-service:
+    image: abhays2004/codesync-comment:latest
+    container_name: comment-service
+    ports:
+      - "8086:8086"
+    environment:
+      <<: *common-env
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  notification-service:
+    image: abhays2004/codesync-notification:latest
+    container_name: notification-service
+    ports:
+      - "8087:8087"
+    environment:
+      <<: *common-env
+      SPRING_RABBITMQ_HOST: rabbitmq
+      FRONTEND_URL: ${FRONTEND_URL}
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  version-service:
+    image: abhays2004/codesync-version:latest
+    container_name: version-service
+    ports:
+      - "8088:8088"
+    environment:
+      <<: *common-env
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  payment-service:
+    image: abhays2004/codesync-payment:latest
+    container_name: payment-service
+    ports:
+      - "8089:8089"
+    environment:
+      <<: *common-env
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      SPRING_RABBITMQ_HOST: rabbitmq
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+networks:
+  default:
+    name: codesync-network

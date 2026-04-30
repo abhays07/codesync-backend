@@ -76,6 +76,15 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 			}).start();
 		}
 
-		return oAuth2User;
+		// Inject the internal DB username into the OAuth2User attributes
+		Map<String, Object> customAttributes = new java.util.HashMap<>(attributes);
+		customAttributes.put("codesync_username", user.getUsername());
+
+		// Return a modified OAuth2User where getName() returns the database username
+		return new org.springframework.security.oauth2.core.user.DefaultOAuth2User(
+				oAuth2User.getAuthorities(),
+				customAttributes,
+				"codesync_username"
+		);
 	}
 }

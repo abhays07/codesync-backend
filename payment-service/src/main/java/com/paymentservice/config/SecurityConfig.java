@@ -14,7 +14,9 @@ public class SecurityConfig {
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http.csrf(csrf -> csrf.disable())
 				.authorizeHttpRequests(
-						auth -> auth.requestMatchers("/api/v1/payments/**").permitAll().anyRequest().authenticated())
+						auth -> auth
+								.requestMatchers("/actuator/**").permitAll()
+								.requestMatchers("/api/v1/payments/**").permitAll().anyRequest().authenticated())
 				.formLogin(form -> form.disable()).httpBasic(basic -> basic.disable());
 		return http.build();
 	}

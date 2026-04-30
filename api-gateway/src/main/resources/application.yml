@@ -1,103 +1,104 @@
 server:
     port: 9000
 
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    org.springframework.http.server.reactive: INFO
+    org.springframework.web.reactive: INFO
+    reactor.netty.http.server: INFO
+
 spring:
     application:
         name: api-gateway
     cloud:
         gateway:
             # --- CORS Configuration ---
-            globalcors:
-                add-to-simple-url-handler-mapping: true
-                cors-configurations:
-                    "[/**]":
-                        allowedOrigins: "http://localhost:5173"
-                        allowedMethods:
-                            ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
-                        allowedHeaders: "*"
-                        allowCredentials: true
+            server:
+                webflux:
+                    globalcors:
+                        add-to-simple-url-handler-mapping: true
+                        cors-configurations:
+                            "[/**]":
+                                allowedOriginPatterns: "*"
+                                allowedMethods:
+                                    ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+                                allowedHeaders: "*"
+                                allowCredentials: true
 
-            # --- HTTP Client Timeouts (Prevents 504 Gateway Timeout during heavy code runs) ---
-            httpclient:
-                connect-timeout: 10000
-                response-timeout: 30s
+                    # --- HTTP Client Timeouts ---
+                    httpclient:
+                        connect-timeout: 10000
+                        response-timeout: 30s
 
-            discovery:
-                locator:
-                    enabled: true
-                    lower-case-service-id: true
+                    discovery:
+                        locator:
+                            enabled: true
+                            lower-case-service-id: true
 
-            routes:
-                # Standard API Routing Pattern: /api/v1/service-name/**
-                - id: auth-service
-                  uri: lb://auth-service
-                  predicates:
-                      - Path=/api/v1/auth/**
+                    routes:
+                        - id: auth-service
+                          uri: lb://auth-service
+                          predicates:
+                              - Path=/api/v1/auth/**
 
-                - id: project-service
-                  uri: lb://project-service
-                  predicates:
-                      - Path=/api/v1/projects/**
+                        - id: project-service
+                          uri: lb://project-service
+                          predicates:
+                              - Path=/api/v1/projects/**
 
-                - id: file-service
-                  uri: lb://file-service
-                  predicates:
-                      - Path=/api/v1/files/**
+                        - id: file-service
+                          uri: lb://file-service
+                          predicates:
+                              - Path=/api/v1/files/**
 
-                - id: collab-service
-                  uri: lb://collab-service
-                  predicates:
-                      - Path=/api/v1/sessions/**
+                        - id: collab-service
+                          uri: lb://collab-service
+                          predicates:
+                              - Path=/api/v1/sessions/**
 
-                - id: execution-service
-                  uri: lb://execution-service
-                  predicates:
-                      - Path=/api/v1/executions/**
+                        - id: execution-service
+                          uri: lb://execution-service
+                          predicates:
+                              - Path=/api/v1/executions/**
 
-                - id: comment-service
-                  uri: lb://comment-service
-                  predicates:
-                      - Path=/api/v1/comments/**
+                        - id: comment-service
+                          uri: lb://comment-service
+                          predicates:
+                              - Path=/api/v1/comments/**
 
-                - id: notification-service
-                  uri: lb://notification-service
-                  predicates:
-                      - Path=/api/v1/notifications/**
+                        - id: notification-service
+                          uri: lb://notification-service
+                          predicates:
+                              - Path=/api/v1/notifications/**
 
-                - id: version-service
-                  uri: lb://version-service
-                  predicates:
-                      - Path=/api/v1/versions/**
+                        - id: version-service
+                          uri: lb://version-service
+                          predicates:
+                              - Path=/api/v1/versions/**
 
-                # --- WEBSOCKETS (CRITICAL for Collaboration/Notifications) ---
-                # Note: WebSocket URIs must use lb:ws:// for load balancing
-                - id: notification-ws
-                  uri: lb:ws://notification-service
-                  predicates:
-                      - Path=/ws-notifications/**
+                        - id: notification-ws
+                          uri: lb:ws://notification-service
+                          predicates:
+                              - Path=/ws-notifications/**
 
-                - id: collab-ws
-                  uri: lb:ws://collab-service
-                  predicates:
-                      - Path=/ws-collab/**
+                        - id: collab-ws
+                          uri: lb:ws://collab-service
+                          predicates:
+                              - Path=/ws-collab/**
 
-                - id: payment-service
-                  uri: lb://payment-service
-                  predicates:
-                      - Path=/api/v1/payments/**
-
-                # --- OPENAPI / SWAGGER AGGREGATION ---
-                - id: openapi-aggregation
-                  uri: lb://${service-name}
-                  predicates:
-                      - Path=/v3/api-docs/**
+                        - id: payment-service
+                          uri: lb://payment-service
+                          predicates:
+                              - Path=/api/v1/payments/**
 
 eureka:
     client:
         service-url:
-            defaultZone: http://localhost:8761/eureka/
+            defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
+    instance:
+        prefer-ip-address: true
 
-# Dynamic Swagger UI Dropdown
 springdoc:
     swagger-ui:
         urls:

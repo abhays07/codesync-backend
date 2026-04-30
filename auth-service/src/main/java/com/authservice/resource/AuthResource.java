@@ -26,8 +26,18 @@ public class AuthResource {
 	private JwtUtils jwtUtils;
 
 	@PostMapping("/register")
-	public ResponseEntity<User> registerUser(@Valid @RequestBody User user) {
-		return ResponseEntity.ok(authService.register(user));
+	public ResponseEntity<User> registerUser(@Valid @RequestBody User user, @RequestParam("otp") String otp) {
+		return ResponseEntity.ok(authService.register(user, otp));
+	}
+
+	@PostMapping("/send-registration-otp")
+	public ResponseEntity<?> sendRegistrationOtp(@RequestBody Map<String, String> request) {
+		try {
+			authService.sendRegistrationOtp(request.get("email"), request.get("username"));
+			return ResponseEntity.ok(Map.of("message", "Registration OTP sent successfully"));
+		} catch (Exception e) {
+			return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
+		}
 	}
 
 	@PostMapping("/login")
@@ -47,25 +57,43 @@ public class AuthResource {
 	}
 
 	@GetMapping("/me")
-	public ResponseEntity<?> getCurrentUser(Authentication authentication) {
-		if (authentication == null)
-			return ResponseEntity.status(401).body("Not authenticated");
+	public ResponseEntity<?> getCurrentUser(@RequestHeader(value = "Authorization", required = false) String authHeader, Authentication authentication) {
+		if (authHeader != null && authHeader.startsWith("Bearer ")) {
+			String token = authHeader.substring(7);
+			if (jwtUtils.validateToken(token)) {
+				String username = jwtUtils.getUsernameFromToken(token);
+				User user = authService.getByUsername(username);
+				
+				Map<String, Object> response = new HashMap<>();
+				// We can return a fresh token or the same token
+				response.put("token", token);
+				response.put("userId", user.getUserId());
+				response.put("username", user.getUsername());
+				response.put("email", user.getEmail());
+				response.put("avatarUrl", user.getAvatarUrl());
+				return ResponseEntity.ok(response);
+			}
+		}
 
-		String email = (authentication
-				.getPrincipal() instanceof org.springframework.security.oauth2.core.user.OAuth2User oAuth)
-						? oAuth.getAttribute("email")
-						: authentication.getName();
+		// Fallback for session-based Authentication (if used)
+		if (authentication != null && authentication.isAuthenticated() && !authentication.getName().equals("anonymousUser")) {
+			String email = (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.user.OAuth2User oAuth)
+					? oAuth.getAttribute("email")
+					: authentication.getName();
 
-		User user = authService.getUserByEmail(email);
-		String token = jwtUtils.generateToken(user.getUsername());
+			User user = authService.getUserByEmail(email);
+			String token = jwtUtils.generateToken(user.getUsername());
 
-		Map<String, Object> response = new HashMap<>();
-		response.put("token", token);
-		response.put("userId", user.getUserId());
-		response.put("username", user.getUsername());
-		response.put("email", user.getEmail());
-		response.put("avatarUrl", user.getAvatarUrl());
-		return ResponseEntity.ok(response);
+			Map<String, Object> response = new HashMap<>();
+			response.put("token", token);
+			response.put("userId", user.getUserId());
+			response.put("username", user.getUsername());
+			response.put("email", user.getEmail());
+			response.put("avatarUrl", user.getAvatarUrl());
+			return ResponseEntity.ok(response);
+		}
+
+		return ResponseEntity.status(401).body("Not authenticated");
 	}
 
 	@GetMapping("/profile/{id}")

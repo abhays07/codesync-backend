@@ -62,4 +62,20 @@ public class FileResource {
 		fileService.deleteFolder(folderId);
 		return ResponseEntity.noContent().build();
 	}
+
+	@PatchMapping("/file/{fileId}/rename")
+	public ResponseEntity<CodeFile> renameFile(@PathVariable Long fileId, @RequestParam("newName") String newName) {
+		return ResponseEntity.ok(fileService.renameFile(fileId, newName));
+	}
+
+	@PatchMapping("/folder/{folderId}/rename")
+	public ResponseEntity<Folder> renameFolder(@PathVariable Long folderId, @RequestParam("newName") String newName) {
+		return ResponseEntity.ok(fileService.renameFolder(folderId, newName));
+	}
+
+	@GetMapping("/search/{projectId}")
+	public ResponseEntity<List<CodeFile>> searchInProject(@PathVariable int projectId,
+			@RequestParam("q") String query) {
+		return ResponseEntity.ok(fileService.searchInProject(projectId, query));
+	}
 }

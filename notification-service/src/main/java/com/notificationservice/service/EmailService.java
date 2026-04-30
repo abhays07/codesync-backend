@@ -3,6 +3,7 @@ package com.notificationservice.service;
 import jakarta.mail.internet.MimeMessage;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -13,6 +14,9 @@ public class EmailService {
 
 	@Autowired
 	private JavaMailSender mailSender;
+
+	@Value("${FRONTEND_URL}")
+	private String frontendUrl;
 
 	@Async("emailTaskExecutor")
 	public void sendHtmlEmail(List<String> recipients, String username, String projectName, boolean isApproved) {
@@ -30,8 +34,8 @@ public class EmailService {
 				? "Great news! Your request to collaborate has been accepted. You now have full access to the project workspace."
 				: "Thank you for your interest. Unfortunately, the project owner has declined your request to join at this time.";
 
-		String actionBtn = isApproved ? "<a href='http://localhost:5173/dashboard' class='btn'>Go to Workspace</a>"
-				: "<a href='http://localhost:5173/explore' class='btn-secondary'>View Other Projects</a>";
+		String actionBtn = isApproved ? "<a href='" + frontendUrl + "/dashboard' class='btn'>Go to Workspace</a>"
+				: "<a href='" + frontendUrl + "/explore' class='btn-secondary'>View Other Projects</a>";
 
 		// 2. The Professional HTML Template
 		String htmlTemplate = """

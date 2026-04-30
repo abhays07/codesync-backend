@@ -60,8 +60,12 @@ public class PaymentResource {
 				p.setStatus("SUCCESS");
 				repository.save(p);
 
-				// Async push to Notification-Service via RabbitMQ
-				producer.sendPaymentSuccessNotification(p.getUserEmail(), p.getRazorpayOrderId(), p.getAmount());
+				// Async push to Notification-Service via RabbitMQ (Wrapped in try-catch for resilience)
+				try {
+					producer.sendPaymentSuccessNotification(p.getUserEmail(), p.getRazorpayOrderId(), p.getAmount());
+				} catch (Exception e) {
+					System.err.println("Failed to send payment notification: " + e.getMessage());
+				}
 				return ResponseEntity.ok(Map.of("status", "success"));
 			}).orElse(ResponseEntity.status(404).body(Map.of("message", "Order record not found")));
 		}

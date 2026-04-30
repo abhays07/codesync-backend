@@ -187,6 +187,11 @@ public class FileServiceImpl implements FileService {
 	public CodeFile renameFile(Long id, String name) {
 		CodeFile f = fileRepository.findById(id).orElseThrow();
 		f.setName(name);
+		if (name != null && name.contains(".")) {
+			f.setExtension(name.substring(name.lastIndexOf(".") + 1));
+		} else {
+			f.setExtension("");
+		}
 		return fileRepository.save(f);
 	}
 

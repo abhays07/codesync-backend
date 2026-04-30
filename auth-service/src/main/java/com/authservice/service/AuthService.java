@@ -5,7 +5,9 @@ import java.util.List;
 import com.authservice.entity.User;
 
 public interface AuthService {
-	User register(User user);
+	User register(User user, String otp);
+
+	void sendRegistrationOtp(String email, String username);
 
 	String login(String username, String password);
 
