@@ -49,10 +49,10 @@ public class AuthServiceImpl implements AuthService {
 		if (userRepository.findByUsername(username).isPresent()) {
 			throw new RuntimeException("Username already exists");
 		}
-		
+
 		String otp = String.format("%06d", new java.util.Random().nextInt(999999));
 		registrationOtps.put(email, otp);
-		
+
 		new Thread(() -> emailService.sendOtpEmail(email, otp)).start();
 	}
 
@@ -63,11 +63,11 @@ public class AuthServiceImpl implements AuthService {
 		if (storedOtp == null || !storedOtp.equals(otp)) {
 			throw new RuntimeException("Invalid or expired registration OTP");
 		}
-		
+
 		// Validation: Ensure email/username uniqueness before hashing
 		if (userRepository.existsByEmail(user.getEmail()))
 			throw new RuntimeException("Email already exists");
-		
+
 		if (userRepository.findByUsername(user.getUsername()).isPresent()) {
 			throw new RuntimeException("Username already exists");
 		}
@@ -91,7 +91,7 @@ public class AuthServiceImpl implements AuthService {
 				.orElseThrow(() -> new RuntimeException("Invalid username or password"));
 
 		if (passwordEncoder.matches(password, user.getPasswordHash())) {
-			return jwtUtils.generateToken(username);
+			return jwtUtils.generateToken(username, user.getRole().name());
 		} else {
 			throw new RuntimeException("Invalid username or password");
 		}
@@ -128,21 +128,23 @@ public class AuthServiceImpl implements AuthService {
 		user.setFullName(userDetails.getFullName());
 		user.setBio(userDetails.getBio());
 		user.setAvatarUrl(userDetails.getAvatarUrl());
-		
-		if (userDetails.getUsername() != null && !userDetails.getUsername().trim().isEmpty() && !userDetails.getUsername().equals(user.getUsername())) {
+
+		if (userDetails.getUsername() != null && !userDetails.getUsername().trim().isEmpty()
+				&& !userDetails.getUsername().equals(user.getUsername())) {
 			if (userRepository.findByUsername(userDetails.getUsername().trim()).isPresent()) {
 				throw new RuntimeException("Username already exists");
 			}
 			user.setUsername(userDetails.getUsername().trim());
 		}
-		
-		if (userDetails.getEmail() != null && !userDetails.getEmail().trim().isEmpty() && !userDetails.getEmail().equals(user.getEmail())) {
+
+		if (userDetails.getEmail() != null && !userDetails.getEmail().trim().isEmpty()
+				&& !userDetails.getEmail().equals(user.getEmail())) {
 			if (userRepository.existsByEmail(userDetails.getEmail().trim())) {
 				throw new RuntimeException("Email already exists");
 			}
 			user.setEmail(userDetails.getEmail().trim());
 		}
-		
+
 		user.setGithubLink(userDetails.getGithubLink());
 		user.setLinkedinLink(userDetails.getLinkedinLink());
 		user.setTwitterLink(userDetails.getTwitterLink());
@@ -159,37 +161,38 @@ public class AuthServiceImpl implements AuthService {
 
 	@Override
 	public void sendPasswordResetOtp(String email) {
-		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found with this email"));
-		
+		User user = userRepository.findByEmail(email)
+				.orElseThrow(() -> new RuntimeException("User not found with this email"));
+
 		// Generate 6-digit OTP
 		String otp = String.format("%06d", new java.util.Random().nextInt(999999));
-		
+
 		user.setResetOtp(passwordEncoder.encode(otp));
 		user.setOtpExpiry(java.time.LocalDateTime.now().plusMinutes(15));
 		userRepository.save(user);
-		
+
 		new Thread(() -> emailService.sendOtpEmail(email, otp)).start();
 	}
 
 	@Override
 	public void resetPasswordWithOtp(String email, String otp, String newPassword) {
 		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
-		
+
 		if (user.getResetOtp() == null || user.getOtpExpiry() == null
 				|| user.getOtpExpiry().isBefore(java.time.LocalDateTime.now())) {
 			throw new RuntimeException("OTP expired or invalid");
 		}
-		
+
 		if (!passwordEncoder.matches(otp, user.getResetOtp())) {
 			throw new RuntimeException("Invalid OTP");
 		}
-		
+
 		validatePassword(newPassword);
 		// Reset password and clear OTP
 		user.setPasswordHash(passwordEncoder.encode(newPassword));
 		user.setResetOtp(null);
 		user.setOtpExpiry(null);
-		
+
 		userRepository.save(user);
 	}
 
@@ -205,6 +208,8 @@ public class AuthServiceImpl implements AuthService {
 
 	@Override
 	public String refreshToken(String token) {
-		return jwtUtils.generateToken(jwtUtils.getUsernameFromToken(token));
+		String username = jwtUtils.getUsernameFromToken(token);
+		User user = userRepository.findByUsername(username).orElseThrow(() -> new RuntimeException("User not found"));
+		return jwtUtils.generateToken(username, user.getRole().name());
 	}
 }

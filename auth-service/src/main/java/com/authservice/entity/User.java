@@ -35,8 +35,9 @@ public class User {
 
 	private String fullName;
 
-	@Column(name = "user_role")
-	private String role = "DEVELOPER"; // Default role
+	@Enumerated(EnumType.STRING)
+	@Column(name = "user_role", nullable = false)
+	private Role role = Role.DEVELOPER; // Default role
 
 	@Column(columnDefinition = "LONGTEXT")
 	private String avatarUrl;

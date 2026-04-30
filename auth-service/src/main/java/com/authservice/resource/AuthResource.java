@@ -1,6 +1,7 @@
 package com.authservice.resource;
 
 import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -57,13 +58,14 @@ public class AuthResource {
 	}
 
 	@GetMapping("/me")
-	public ResponseEntity<?> getCurrentUser(@RequestHeader(value = "Authorization", required = false) String authHeader, Authentication authentication) {
+	public ResponseEntity<?> getCurrentUser(@RequestHeader(value = "Authorization", required = false) String authHeader,
+			Authentication authentication) {
 		if (authHeader != null && authHeader.startsWith("Bearer ")) {
 			String token = authHeader.substring(7);
 			if (jwtUtils.validateToken(token)) {
 				String username = jwtUtils.getUsernameFromToken(token);
 				User user = authService.getByUsername(username);
-				
+
 				Map<String, Object> response = new HashMap<>();
 				// We can return a fresh token or the same token
 				response.put("token", token);
@@ -76,13 +78,15 @@ public class AuthResource {
 		}
 
 		// Fallback for session-based Authentication (if used)
-		if (authentication != null && authentication.isAuthenticated() && !authentication.getName().equals("anonymousUser")) {
-			String email = (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.user.OAuth2User oAuth)
-					? oAuth.getAttribute("email")
-					: authentication.getName();
+		if (authentication != null && authentication.isAuthenticated()
+				&& !authentication.getName().equals("anonymousUser")) {
+			String email = (authentication
+					.getPrincipal() instanceof org.springframework.security.oauth2.core.user.OAuth2User oAuth)
+							? oAuth.getAttribute("email")
+							: authentication.getName();
 
 			User user = authService.getUserByEmail(email);
-			String token = jwtUtils.generateToken(user.getUsername());
+			String token = jwtUtils.generateToken(user.getUsername(), user.getRole().name());
 
 			Map<String, Object> response = new HashMap<>();
 			response.put("token", token);

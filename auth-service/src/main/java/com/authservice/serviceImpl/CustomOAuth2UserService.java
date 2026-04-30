@@ -1,5 +1,6 @@
 package com.authservice.serviceImpl;
 
+import com.authservice.entity.Role;
 import com.authservice.entity.User;
 import com.authservice.repository.UserRepository;
 import com.authservice.service.EmailService;
@@ -60,7 +61,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 			user.setUsername(email.split("@")[0] + "_" + provider.toLowerCase());
 
 			user.setProvider(provider);
-			user.setRole("DEVELOPER");
+			user.setRole(Role.DEVELOPER);
 			user.setActive(true);
 			user.setCreatedAt(LocalDateTime.now());
 			user.setPasswordHash("OAUTH2_USER");
@@ -81,10 +82,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 		customAttributes.put("codesync_username", user.getUsername());
 
 		// Return a modified OAuth2User where getName() returns the database username
-		return new org.springframework.security.oauth2.core.user.DefaultOAuth2User(
-				oAuth2User.getAuthorities(),
-				customAttributes,
-				"codesync_username"
-		);
+		return new org.springframework.security.oauth2.core.user.DefaultOAuth2User(oAuth2User.getAuthorities(),
+				customAttributes, "codesync_username");
 	}
 }
