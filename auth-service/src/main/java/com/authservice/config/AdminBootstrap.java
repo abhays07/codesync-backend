@@ -14,7 +14,8 @@ public class AdminBootstrap {
     @Bean
     public CommandLineRunner initAdmin(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         return args -> {
-            if (userRepository.findByEmail("admin@codesync.com").isEmpty()) {
+            java.util.Optional<User> adminOpt = userRepository.findByEmail("admin@codesync.com");
+            if (adminOpt.isEmpty()) {
                 User admin = new User();
                 admin.setUsername("superadmin");
                 admin.setEmail("admin@codesync.com");
@@ -24,6 +25,13 @@ public class AdminBootstrap {
                 
                 userRepository.save(admin);
                 System.out.println("✅ Super Admin Account Created Successfully!");
+            } else {
+                User existingAdmin = adminOpt.get();
+                if (existingAdmin.getRole() != Role.ADMIN) {
+                    existingAdmin.setRole(Role.ADMIN);
+                    userRepository.save(existingAdmin);
+                    System.out.println("✅ Existing Super Admin Account Role Updated to ADMIN!");
+                }
             }
         };
     }
