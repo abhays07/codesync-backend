@@ -1,16 +1,13 @@
 pipeline {
     agent any
 
-    // Define parameters so you can choose which service to deploy from the UI
     parameters {
         choice(name: 'SERVICE_NAME', choices: ['auth-service', 'api-gateway', 'eureka-server', 'project-service', 'file-service', 'collab-service', 'execution-service', 'comment-service', 'notification-service', 'payment-service', 'version-service', 'admin-server'], description: 'Select the microservice to build and deploy')
     }
 
     environment {
         DOCKER_HUB_CREDENTIALS_ID = 'docker-hub-credentials'
-        DOCKER_IMAGE = "abhays2004/codesync-${params.SERVICE_NAME}"
         IMAGE_TAG = "${BUILD_NUMBER}"
-        // The directory of the chosen service
         SERVICE_DIR = "${params.SERVICE_NAME}"
     }
 
@@ -25,8 +22,7 @@ pipeline {
             steps {
                 dir("${SERVICE_DIR}") {
                     echo "Building ${params.SERVICE_NAME} with Maven..."
-                    sh 'chmod +x mvnw'
-                    // Execute Maven wrapper to build the JAR
+                    sh 'chmod +x mvnw || true'
                     sh './mvnw clean package -DskipTests'
                 }
             }
@@ -35,11 +31,30 @@ pipeline {
         stage('Docker Build & Tag') {
             steps {
                 dir("${SERVICE_DIR}") {
-                    echo "Building Docker image for ${params.SERVICE_NAME}..."
                     script {
-                        // Build and tag the image using native shell commands
-                        sh "docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} ."
-                        sh "docker tag ${DOCKER_IMAGE}:${IMAGE_TAG} ${DOCKER_IMAGE}:latest"
+                        // Dynamic mapping for image names
+                        def map = [
+                            'auth-service': 'abhays2004/codesync-auth',
+                            'api-gateway': 'abhays2004/codesync-gateway',
+                            'eureka-server': 'abhays2004/codesync-eureka',
+                            'project-service': 'abhays2004/codesync-project',
+                            'file-service': 'abhays2004/codesync-file',
+                            'collab-service': 'abhays2004/codesync-collab',
+                            'execution-service': 'abhays2004/codesync-execution',
+                            'comment-service': 'abhays2004/codesync-comment',
+                            'notification-service': 'abhays2004/codesync-notification',
+                            'payment-service': 'abhays2004/codesync-payment',
+                            'version-service': 'abhays2004/codesync-version',
+                            'admin-server': 'abhays2004/codesync-admin'
+                        ]
+                        // Determine DOCKER_IMAGE
+                        def imageName = map[params.SERVICE_NAME] ?: "abhays2004/codesync-${params.SERVICE_NAME}"
+                        
+                        echo "Building Docker image for ${imageName}..."
+                        sh "docker build -t ${imageName}:${IMAGE_TAG} -t ${imageName}:latest ."
+                        
+                        // We store the image name in env for the next stages
+                        env.CURRENT_IMAGE = imageName
                     }
                 }
             }
@@ -47,14 +62,11 @@ pipeline {
 
         stage('Docker Push') {
             steps {
-                echo "Pushing ${DOCKER_IMAGE} to Docker Hub..."
                 script {
                     withCredentials([usernamePassword(credentialsId: "${DOCKER_HUB_CREDENTIALS_ID}", passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
-                        // Login to Docker Hub securely
                         sh "echo \$DOCKER_PASSWORD | docker login -u \$DOCKER_USERNAME --password-stdin"
-                        // Push images
-                        sh "docker push ${DOCKER_IMAGE}:${IMAGE_TAG}"
-                        sh "docker push ${DOCKER_IMAGE}:latest"
+                        sh "docker push ${env.CURRENT_IMAGE}:${IMAGE_TAG}"
+                        sh "docker push ${env.CURRENT_IMAGE}:latest"
                     }
                 }
             }
@@ -62,40 +74,19 @@ pipeline {
 
         stage('Deploy to EC2') {
             steps {
-                echo "Updating ${params.SERVICE_NAME} on the deployment server..."
                 script {
-                    // Bring in the .env file securely from Jenkins Credentials
                     withCredentials([file(credentialsId: 'production-env-file', variable: 'ENV_FILE')]) {
                         sh """
-                            # Copy the secret .env file into our workspace
                             cp \$ENV_FILE .env
-                            
-                            # Pull the latest image
-                            docker pull ${DOCKER_IMAGE}:latest
-                            
-                            # Force remove the existing container to prevent naming conflicts
+                            docker pull ${env.CURRENT_IMAGE}:latest
                             docker stop ${params.SERVICE_NAME} || true
                             docker rm ${params.SERVICE_NAME} || true
-                            
-                            # Recreate and start only the updated service using the workspace docker-compose
-                            # We use -p codesync to force a uniform project name
                             docker-compose -p codesync up -d --no-deps ${params.SERVICE_NAME}
-                            
-                            # Clean up dangling images to save disk space
                             docker image prune -f
                         """
                     }
                 }
             }
-        }
-    }
-
-    post {
-        success {
-            echo "✅ Successfully built and deployed ${params.SERVICE_NAME}!"
-        }
-        failure {
-            echo "❌ Pipeline failed for ${params.SERVICE_NAME}. Please check the logs."
         }
     }
 }
