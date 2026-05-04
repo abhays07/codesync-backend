@@ -78,6 +78,7 @@ pipeline {
                     withCredentials([file(credentialsId: 'production-env-file', variable: 'ENV_FILE')]) {
                         sh """
                             cp \$ENV_FILE .env
+                            echo "SPRING_PROFILES_ACTIVE=prod" >> .env
                             docker pull ${env.CURRENT_IMAGE}:latest
                             docker stop ${params.SERVICE_NAME} || true
                             docker rm ${params.SERVICE_NAME} || true

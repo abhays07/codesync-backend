@@ -2,6 +2,7 @@ version: "3.8"
 
 # COMMON ENV (MUST BE OUTSIDE services)
 x-common-env: &common-env
+  SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
   DB_HOST: ${DB_HOST}
   DB_USER: ${DB_USER}
   DB_PASSWORD: ${DB_PASSWORD}
