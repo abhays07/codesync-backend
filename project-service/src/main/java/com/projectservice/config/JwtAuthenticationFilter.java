@@ -25,13 +25,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        System.out.println("=== PROJECT-SERVICE DEBUG ===");
+        System.out.println("Secret length: " + (jwtSecret != null ? jwtSecret.length() : "null"));
+        System.out.println("Secret prefix: " + (jwtSecret != null && jwtSecret.length() > 10 ? jwtSecret.substring(0, 10) : "short"));
+        System.out.println("=============================");
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             try {
                 Claims claims = Jwts.parserBuilder()
-                        .setSigningKey(jwtSecret.getBytes())
+                        .setSigningKey(jwtSecret.trim().getBytes(java.nio.charset.StandardCharsets.UTF_8))
                         .build()
                         .parseClaimsJws(token)
                         .getBody();
@@ -44,9 +48,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     UsernamePasswordAuthenticationToken auth = 
                         new UsernamePasswordAuthenticationToken(username, null, Collections.singletonList(authority));
                     SecurityContextHolder.getContext().setAuthentication(auth);
+                    System.out.println("JWT Validated successfully for user: " + username + " with role: ROLE_" + role);
+                } else {
+                    System.out.println("JWT Validation: No role found in token for user: " + username);
                 }
             } catch (Exception e) {
-                // Invalid token
+                System.err.println("JWT Validation FAILED: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            if (request.getRequestURI().startsWith("/api/v1/admin/")) {
+                System.out.println("JWT Validation: No Bearer token found in request to " + request.getRequestURI());
             }
         }
         filterChain.doFilter(request, response);

@@ -11,6 +11,7 @@ x-common-env: &common-env
   EUREKA_INSTANCE_PREFER_IP_ADDRESS: true
   SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: 1
   SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: 1
+  JWT_SECRET: ${JWT_SECRET}
 
 services:
 
@@ -25,6 +26,7 @@ services:
       interval: 15s
       timeout: 10s
       retries: 15
+      
       start_period: 30s
 
   rabbitmq:

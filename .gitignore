@@ -1,0 +1,34 @@
+# ========================
+# Sensitive files
+# ========================
+*.pem
+*.key
+
+.env
+
+# --- Java/Maven ---
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# --- IDE Specific ---
+.metadata/
+.settings/
+.project
+.classpath
+.factorypath
+.springBeans
+.sts4-cache/
+bin/
+*.iml
+.idea/
+
+# --- Log Files ---
+*.log
+logs/
+
+# --- System Files ---
+Thumbs.db
+.DS_Store

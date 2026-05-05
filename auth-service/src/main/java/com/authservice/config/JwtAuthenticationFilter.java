@@ -25,13 +25,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        System.out.println("=== AUTH-SERVICE DEBUG ===");
+        System.out.println("Secret length: " + (jwtSecret != null ? jwtSecret.length() : "null"));
+        System.out.println("Secret prefix: " + (jwtSecret != null && jwtSecret.length() > 10 ? jwtSecret.substring(0, 10) : "short"));
+        System.out.println("=============================");
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             try {
                 Claims claims = Jwts.parserBuilder()
-                        .setSigningKey(jwtSecret.getBytes())
+                        .setSigningKey(jwtSecret.trim().getBytes(java.nio.charset.StandardCharsets.UTF_8))
                         .build()
                         .parseClaimsJws(token)
                         .getBody();

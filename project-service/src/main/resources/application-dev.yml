@@ -2,18 +2,19 @@ server:
   port: 8082
 
 spring:
-  config:
-    import: optional:file:../.env[.properties]
   application:
     name: project-service
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:3306/codesync_project_db?createDatabaseIfNotExist=true
-    username: ${DB_USER:root}
-    password: ${DB_PASSWORD:password}
+    # Hardcoded to local for DEV environment
+    url: jdbc:mysql://localhost:3306/codesync_project_db?createDatabaseIfNotExist=true
+    username: root
+    # Make sure this matches your local MySQL password
+    password: ${DB_PASSWORD:05052005}
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
+    # HINT: You can remove the 'dialect' property if you are using a recent Hibernate version
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
@@ -21,7 +22,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
+      defaultZone: http://localhost:8761/eureka/
   instance:
     prefer-ip-address: true
 
@@ -33,6 +34,3 @@ management:
   endpoint:
     health:
       show-details: always
-
-jwt:
-  secret: ${JWT_SECRET}

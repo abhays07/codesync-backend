@@ -31,7 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = authHeader.substring(7);
             try {
                 Claims claims = Jwts.parserBuilder()
-                        .setSigningKey(jwtSecret.getBytes())
+                        .setSigningKey(jwtSecret.trim().getBytes(java.nio.charset.StandardCharsets.UTF_8))
                         .build()
                         .parseClaimsJws(token)
                         .getBody();
@@ -44,9 +44,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     UsernamePasswordAuthenticationToken auth = 
                         new UsernamePasswordAuthenticationToken(username, null, Collections.singletonList(authority));
                     SecurityContextHolder.getContext().setAuthentication(auth);
+                    System.out.println("JWT Validated successfully for user: " + username + " with role: ROLE_" + role);
+                } else {
+                    System.out.println("JWT Validation: No role found in token for user: " + username);
                 }
             } catch (Exception e) {
-                // Invalid token
+                System.err.println("JWT Validation FAILED: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            if (request.getRequestURI().startsWith("/api/v1/admin/")) {
+                System.out.println("JWT Validation: No Bearer token found in request to " + request.getRequestURI());
             }
         }
         filterChain.doFilter(request, response);

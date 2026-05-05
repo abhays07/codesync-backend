@@ -1,0 +1,71 @@
+server:
+    port: 8081
+    forward-headers-strategy: framework
+
+spring:
+    application:
+        name: auth-service
+    datasource:
+        # Pointing to local MySQL
+        url: jdbc:mysql://localhost:3306/codesync_auth_db?createDatabaseIfNotExist=true
+        username: root
+        password: ${DB_PASSWORD:05052005}
+    jpa:
+        hibernate:
+            ddl-auto: update
+        show-sql: true
+        properties:
+            hibernate:
+                dialect: org.hibernate.dialect.MySQLDialect
+
+    # --- Mail Configuration (Optional for Local) ---
+    mail:
+        host: smtp.gmail.com
+        port: 587
+        # Note: If you don't have these locally, remove this block or comment it out to avoid startup errors
+        username: ${EMAIL_USERNAME:your-email@gmail.com}
+        password: ${EMAIL_APP_PASSWORD:your-app-password}
+        properties:
+            mail:
+                smtp:
+                    auth: true
+                    starttls:
+                        enable: true
+
+    # --- OAUTH2 CONFIGURATION (LOCALHOST) ---
+    security:
+        oauth2:
+            client:
+                registration:
+                    google:
+                        client-id: ${GOOGLE_CLIENT_ID}
+                        client-secret: ${GOOGLE_CLIENT_SECRET}
+                        # CHANGED: Redirects back to local, not EC2
+                        redirect-uri: "http://localhost:9000/api/v1/auth/login/oauth2/code/google"
+                        scope:
+                            - email
+                            - profile
+                    github:
+                        client-id: ${GITHUB_CLIENT_ID}
+                        client-secret: ${GITHUB_CLIENT_SECRET}
+                        # CHANGED: Redirects back to local, not EC2
+                        redirect-uri: "http://localhost:9000/api/v1/auth/login/oauth2/code/github"
+                        scope:
+                            - read:user
+                            - user:email
+
+eureka:
+    client:
+        service-url:
+            defaultZone: http://localhost:8761/eureka/
+    instance:
+        prefer-ip-address: true
+
+
+springdoc:
+    api-docs:
+        path: /v3/api-docs
+    swagger-ui:
+        path: /swagger-ui.html
+    server:
+        url: http://localhost:8081

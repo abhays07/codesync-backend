@@ -23,8 +23,8 @@ public class JwtUtils {
 	private long tokenExpiry;
 
 	private Key getSigningKey() {
-		// Ensure secret is securely encoded
-		return Keys.hmacShaKeyFor(jwtSecret.getBytes());
+		// Ensure secret is securely encoded and robust against trailing spaces/CRLF
+		return Keys.hmacShaKeyFor(jwtSecret.trim().getBytes(java.nio.charset.StandardCharsets.UTF_8));
 	}
 
 	public String generateToken(String username, String role) {
