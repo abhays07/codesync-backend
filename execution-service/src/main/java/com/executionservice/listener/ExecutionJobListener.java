@@ -43,8 +43,18 @@ public class ExecutionJobListener {
 					.withCpuQuota(100000L) // 1 CPU Core Limit
 					.withNetworkMode("none"); // Absolute Isolation
 
-			CreateContainerResponse container = dockerClient.createContainerCmd(image).withHostConfig(hostConfig)
-					.withCmd(getExecutionCommand(job.getLanguage(), job.getSourceCode())).exec();
+			CreateContainerResponse container;
+			try {
+				container = dockerClient.createContainerCmd(image).withHostConfig(hostConfig)
+						.withCmd(getExecutionCommand(job.getLanguage(), job.getSourceCode())).exec();
+			} catch (com.github.dockerjava.api.exception.NotFoundException e) {
+				log.warn("Image {} not found locally (likely pruned). Pulling from Docker Hub...", image);
+				dockerClient.pullImageCmd(image).exec(new com.github.dockerjava.api.command.PullImageResultCallback()).awaitCompletion();
+				
+				// Retry creating the container now that the image is downloaded
+				container = dockerClient.createContainerCmd(image).withHostConfig(hostConfig)
+						.withCmd(getExecutionCommand(job.getLanguage(), job.getSourceCode())).exec();
+			}
 
 			containerId = container.getId();
 			dockerClient.startContainerCmd(containerId).exec();
