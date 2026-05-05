@@ -77,12 +77,24 @@ pipeline {
                 script {
                     withCredentials([file(credentialsId: 'production-env-file', variable: 'ENV_FILE')]) {
                         sh """
+                            # 1. Copy env file
                             cp \$ENV_FILE .env
                             echo "SPRING_PROFILES_ACTIVE=prod" >> .env
-                            docker pull ${env.CURRENT_IMAGE}:latest
+                            
+                            # 2. Cleanup: Remove old local image to avoid lease conflicts
+                            docker rmi \$(docker images -q ${env.CURRENT_IMAGE}:latest) || true
+                            
+                            # 3. Retry logic: Sometimes Docker Hub needs a 10-second buffer
+                            for i in {1..3}; do
+                                docker pull ${env.CURRENT_IMAGE}:latest && break || sleep 10
+                            done
+                            
+                            # 4. Deploy
                             docker stop ${params.SERVICE_NAME} || true
                             docker rm ${params.SERVICE_NAME} || true
                             docker-compose -p codesync up -d --no-deps ${params.SERVICE_NAME}
+                            
+                            # 5. Cleanup dangling images
                             docker image prune -f
                         """
                     }
