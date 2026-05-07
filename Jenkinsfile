@@ -10,7 +10,7 @@ pipeline {
     environment {
         DOCKER_HUB_CREDENTIALS_ID = 'docker-hub-credentials'
         IMAGE_TAG = "${BUILD_NUMBER}"
-        // We will set this dynamically in the first stage
+        // Initialize as empty
         SELECTED_SERVICE = ""
     }
 
@@ -18,12 +18,11 @@ pipeline {
         stage('Detect Changes') {
             steps {
                 script {
-                    // Check if the build was triggered by a GitHub Webhook
                     def isWebhook = currentBuild.buildCauses.toString().contains('GitHubPushCause')
+                    def detected = ""
                     
                     if (isWebhook) {
                         echo "Triggered by GitHub Webhook. Detecting changed folders..."
-                        // Get list of changed files in the last commit
                         def changedFiles = sh(script: "git diff --name-only HEAD~1 HEAD", returnStdout: true).trim()
                         echo "Files changed: \n${changedFiles}"
 
@@ -31,30 +30,31 @@ pipeline {
                         
                         for (service in services) {
                             if (changedFiles.contains("${service}/")) {
-                                env.SELECTED_SERVICE = service
-                                echo "Auto-detected change in: ${service}"
+                                detected = service
+                                echo "Auto-detected change in: ${detected}"
                                 break
                             }
                         }
-                        
-                        if (!env.SELECTED_SERVICE) {
-                            echo "No specific service folder changes detected. Defaulting to first change or manual parameter."
-                            env.SELECTED_SERVICE = params.SERVICE_NAME
-                        }
+                    } 
+
+                    // Logic: If we detected something via webhook, use it. 
+                    // If not (manual build or no folder match), use the parameter.
+                    if (detected != "") {
+                        env.SELECTED_SERVICE = detected
                     } else {
-                        echo "Manual build detected. Using parameter: ${params.SERVICE_NAME}"
+                        echo "Using manual parameter or no specific folder match: ${params.SERVICE_NAME}"
                         env.SELECTED_SERVICE = params.SERVICE_NAME
                     }
                     
-                    // Set the directory for subsequent stages
-                    env.SERVICE_DIR = env.SELECTED_SERVICE
+                    echo "FINAL SELECTED SERVICE: ${env.SELECTED_SERVICE}"
                 }
             }
         }
 
         stage('Maven Build') {
             steps {
-                dir("${env.SERVICE_DIR}") {
+                // Use env.SELECTED_SERVICE here
+                dir("${env.SELECTED_SERVICE}") {
                     echo "Building ${env.SELECTED_SERVICE} with Maven..."
                     sh 'chmod +x mvnw || true'
                     sh './mvnw clean package -DskipTests'
@@ -64,7 +64,7 @@ pipeline {
 
         stage('Docker Build & Tag') {
             steps {
-                dir("${env.SERVICE_DIR}") {
+                dir("${env.SELECTED_SERVICE}") {
                     script {
                         def map = [
                             'auth-service': 'abhays2004/codesync-auth',
@@ -107,24 +107,15 @@ pipeline {
                 script {
                     withCredentials([file(credentialsId: 'production-env-file', variable: 'ENV_FILE')]) {
                         sh """
-                            # 1. Copy env file
                             cp \$ENV_FILE .env
                             echo "SPRING_PROFILES_ACTIVE=prod" >> .env
-                            
-                            # 2. Cleanup old local image
                             docker rmi \$(docker images -q ${env.CURRENT_IMAGE}:latest) || true
-                            
-                            # 3. Pull new image with retry
                             for i in {1..3}; do
                                 docker pull ${env.CURRENT_IMAGE}:latest && break || sleep 10
                             done
-                            
-                            # 4. Deploy using Docker Compose
                             docker stop ${env.SELECTED_SERVICE} || true
                             docker rm ${env.SELECTED_SERVICE} || true
                             docker-compose -p codesync up -d --no-deps ${env.SELECTED_SERVICE}
-                            
-                            # 5. Cleanup
                             docker image prune -f
                         """
                     }
