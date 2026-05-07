@@ -27,7 +27,7 @@ public class Project {
 	private String description;
 	private String language; // Java, Python, etc.
 	private String visibility; // PUBLIC or PRIVATE
-	private int templateId;
+	private int templateId; //Template ID for frontend
 
 	private boolean isArchived = false;
 	private LocalDateTime createdAt = LocalDateTime.now();

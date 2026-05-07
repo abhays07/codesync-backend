@@ -37,13 +37,16 @@ pipeline {
                         }
                     } 
 
-                    // Logic: If we detected something via webhook, use it. 
-                    // If not (manual build or no folder match), use the parameter.
-                    if (detected != "") {
-                        env.SELECTED_SERVICE = detected
+                    if (isWebhook) {
+                        if (detected != "") {
+                            env.SELECTED_SERVICE = detected
+                        } else {
+                            echo "No service changes detected for webhook push. Skipping build."
+                            env.SELECTED_SERVICE = "SKIP"
+                        }
                     } else {
-                        echo "Using manual parameter or no specific folder match: ${params.SERVICE_NAME}"
-                        env.SELECTED_SERVICE = params.SERVICE_NAME
+                        echo "Manual build. Using parameter: ${params.SERVICE_NAME}"
+                        env.SELECTED_SERVICE = params.SERVICE_NAME ? params.SERVICE_NAME.toString() : "auth-service"
                     }
                     
                     echo "FINAL SELECTED SERVICE: ${env.SELECTED_SERVICE}"
@@ -52,6 +55,9 @@ pipeline {
         }
 
         stage('Maven Build') {
+            when {
+                expression { env.SELECTED_SERVICE != 'SKIP' }
+            }
             steps {
                 // Use env.SELECTED_SERVICE here
                 dir("${env.SELECTED_SERVICE}") {
@@ -63,6 +69,9 @@ pipeline {
         }
 
         stage('Docker Build & Tag') {
+            when {
+                expression { env.SELECTED_SERVICE != 'SKIP' }
+            }
             steps {
                 dir("${env.SELECTED_SERVICE}") {
                     script {
@@ -91,6 +100,9 @@ pipeline {
         }
 
         stage('Docker Push') {
+            when {
+                expression { env.SELECTED_SERVICE != 'SKIP' }
+            }
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: "${DOCKER_HUB_CREDENTIALS_ID}", passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
@@ -103,6 +115,9 @@ pipeline {
         }
 
         stage('Deploy to EC2') {
+            when {
+                expression { env.SELECTED_SERVICE != 'SKIP' }
+            }
             steps {
                 script {
                     withCredentials([file(credentialsId: 'production-env-file', variable: 'ENV_FILE')]) {
