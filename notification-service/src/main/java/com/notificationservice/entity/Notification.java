@@ -23,8 +23,8 @@ public class Notification {
 
 	private Integer recipientId; // Target User ID
 	private Integer senderId; // Initiating User ID
-	private String senderName;
-	private String senderEmail;
+	private String senderName; // Sender Name (Frontend Display)
+	private String senderEmail; // Sender Email (Frontend Display)
 
 	private Long relatedId; // Link to Project ID or File ID
 	private String message;

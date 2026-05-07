@@ -10,8 +10,6 @@ pipeline {
     environment {
         DOCKER_HUB_CREDENTIALS_ID = 'docker-hub-credentials'
         IMAGE_TAG = "${BUILD_NUMBER}"
-        // Initialize as empty
-        SELECTED_SERVICE = ""
     }
 
     stages {
