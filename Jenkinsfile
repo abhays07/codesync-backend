@@ -2,26 +2,60 @@ pipeline {
     agent any
 
     parameters {
-        choice(name: 'SERVICE_NAME', choices: ['auth-service', 'api-gateway', 'eureka-server', 'project-service', 'file-service', 'collab-service', 'execution-service', 'comment-service', 'notification-service', 'payment-service', 'version-service', 'admin-server'], description: 'Select the microservice to build and deploy')
+        choice(name: 'SERVICE_NAME', 
+               choices: ['auth-service', 'api-gateway', 'eureka-server', 'project-service', 'file-service', 'collab-service', 'execution-service', 'comment-service', 'notification-service', 'payment-service', 'version-service', 'admin-server'], 
+               description: 'Select the microservice to build and deploy (Ignored if triggered by Webhook)')
     }
 
     environment {
         DOCKER_HUB_CREDENTIALS_ID = 'docker-hub-credentials'
         IMAGE_TAG = "${BUILD_NUMBER}"
-        SERVICE_DIR = "${params.SERVICE_NAME}"
+        // We will set this dynamically in the first stage
+        SELECTED_SERVICE = ""
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('Detect Changes') {
             steps {
-                checkout scm
+                script {
+                    // Check if the build was triggered by a GitHub Webhook
+                    def isWebhook = currentBuild.buildCauses.toString().contains('GitHubPushCause')
+                    
+                    if (isWebhook) {
+                        echo "Triggered by GitHub Webhook. Detecting changed folders..."
+                        // Get list of changed files in the last commit
+                        def changedFiles = sh(script: "git diff --name-only HEAD~1 HEAD", returnStdout: true).trim()
+                        echo "Files changed: \n${changedFiles}"
+
+                        def services = ['auth-service', 'api-gateway', 'eureka-server', 'project-service', 'file-service', 'collab-service', 'execution-service', 'comment-service', 'notification-service', 'payment-service', 'version-service', 'admin-server']
+                        
+                        for (service in services) {
+                            if (changedFiles.contains("${service}/")) {
+                                env.SELECTED_SERVICE = service
+                                echo "Auto-detected change in: ${service}"
+                                break
+                            }
+                        }
+                        
+                        if (!env.SELECTED_SERVICE) {
+                            echo "No specific service folder changes detected. Defaulting to first change or manual parameter."
+                            env.SELECTED_SERVICE = params.SERVICE_NAME
+                        }
+                    } else {
+                        echo "Manual build detected. Using parameter: ${params.SERVICE_NAME}"
+                        env.SELECTED_SERVICE = params.SERVICE_NAME
+                    }
+                    
+                    // Set the directory for subsequent stages
+                    env.SERVICE_DIR = env.SELECTED_SERVICE
+                }
             }
         }
 
         stage('Maven Build') {
             steps {
-                dir("${SERVICE_DIR}") {
-                    echo "Building ${params.SERVICE_NAME} with Maven..."
+                dir("${env.SERVICE_DIR}") {
+                    echo "Building ${env.SELECTED_SERVICE} with Maven..."
                     sh 'chmod +x mvnw || true'
                     sh './mvnw clean package -DskipTests'
                 }
@@ -30,9 +64,8 @@ pipeline {
 
         stage('Docker Build & Tag') {
             steps {
-                dir("${SERVICE_DIR}") {
+                dir("${env.SERVICE_DIR}") {
                     script {
-                        // Dynamic mapping for image names
                         def map = [
                             'auth-service': 'abhays2004/codesync-auth',
                             'api-gateway': 'abhays2004/codesync-gateway',
@@ -47,13 +80,10 @@ pipeline {
                             'version-service': 'abhays2004/codesync-version',
                             'admin-server': 'abhays2004/codesync-admin'
                         ]
-                        // Determine DOCKER_IMAGE
-                        def imageName = map[params.SERVICE_NAME] ?: "abhays2004/codesync-${params.SERVICE_NAME}"
+                        def imageName = map[env.SELECTED_SERVICE] ?: "abhays2004/codesync-${env.SELECTED_SERVICE}"
                         
                         echo "Building Docker image for ${imageName}..."
                         sh "docker build -t ${imageName}:${IMAGE_TAG} -t ${imageName}:latest ."
-                        
-                        // We store the image name in env for the next stages
                         env.CURRENT_IMAGE = imageName
                     }
                 }
@@ -81,20 +111,20 @@ pipeline {
                             cp \$ENV_FILE .env
                             echo "SPRING_PROFILES_ACTIVE=prod" >> .env
                             
-                            # 2. Cleanup: Remove old local image to avoid lease conflicts
+                            # 2. Cleanup old local image
                             docker rmi \$(docker images -q ${env.CURRENT_IMAGE}:latest) || true
                             
-                            # 3. Retry logic: Sometimes Docker Hub needs a 10-second buffer
+                            # 3. Pull new image with retry
                             for i in {1..3}; do
                                 docker pull ${env.CURRENT_IMAGE}:latest && break || sleep 10
                             done
                             
-                            # 4. Deploy
-                            docker stop ${params.SERVICE_NAME} || true
-                            docker rm ${params.SERVICE_NAME} || true
-                            docker-compose -p codesync up -d --no-deps ${params.SERVICE_NAME}
+                            # 4. Deploy using Docker Compose
+                            docker stop ${env.SELECTED_SERVICE} || true
+                            docker rm ${env.SELECTED_SERVICE} || true
+                            docker-compose -p codesync up -d --no-deps ${env.SELECTED_SERVICE}
                             
-                            # 5. Cleanup dangling images
+                            # 5. Cleanup
                             docker image prune -f
                         """
                     }
