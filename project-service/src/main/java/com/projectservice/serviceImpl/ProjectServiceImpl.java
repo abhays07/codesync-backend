@@ -81,7 +81,7 @@ public class ProjectServiceImpl implements ProjectService {
 	@Override
 	public Project getProjectById(int projectId) {
 		return projectRepository.findById(projectId)
-				.orElseThrow(() -> new RuntimeException("Project ID " + projectId + " not found"));
+				.orElseThrow(() -> new IllegalArgumentException("Project ID " + projectId + " not found"));
 	}
 
 	@Override
@@ -89,7 +89,7 @@ public class ProjectServiceImpl implements ProjectService {
 	public Project forkProject(int sourceId, int newOwnerId, String newOwnerUsername) {
 		Project source = getProjectById(sourceId);
 		if (!"PUBLIC".equals(source.getVisibility())) {
-			throw new RuntimeException("Collaboration Error: Only public projects can be forked.");
+			throw new IllegalStateException("Collaboration Error: Only public projects can be forked.");
 		}
 
 		Project forked = Project.builder().name(source.getName() + "-fork")
@@ -105,7 +105,7 @@ public class ProjectServiceImpl implements ProjectService {
 					+ savedFork.getProjectId();
 			restTemplate.postForEntity(fileServiceUrl, null, Void.class);
 		} catch (Exception e) {
-			throw new RuntimeException("Filesystem cloning failed for forked project: " + e.getMessage());
+			throw new IllegalStateException("Filesystem cloning failed for forked project: " + e.getMessage());
 		}
 
 		source.setForkCount(source.getForkCount() + 1);
@@ -154,8 +154,9 @@ public class ProjectServiceImpl implements ProjectService {
 
 	@Override
 	public List<ProjectMember> getProjectMembers(int id) {
+		final String ROLE_EDITOR = "EDITOR";
 		List<ProjectMember> members = memberRepository.findByProjectId(id).stream()
-				.filter(m -> "EDITOR".equals(m.getRole()))
+				.filter(m -> ROLE_EDITOR.equals(m.getRole()))
 				.collect(Collectors.toList());
 
 		Project project = getProjectById(id);

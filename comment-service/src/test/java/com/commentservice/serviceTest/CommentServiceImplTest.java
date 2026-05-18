@@ -115,4 +115,15 @@ public class CommentServiceImplTest {
 
 		assertTrue(ex.getMessage().contains("Delete Failed"));
 	}
+
+	@Test
+	void testUpdateComment_NotFound_ShouldThrowException() {
+		when(repository.findById(99L)).thenReturn(Optional.empty());
+
+		RuntimeException ex = assertThrows(RuntimeException.class, () -> {
+			commentService.updateComment(99L, "Some content");
+		});
+
+		assertTrue(ex.getMessage().contains("Update Failed"));
+	}
 }

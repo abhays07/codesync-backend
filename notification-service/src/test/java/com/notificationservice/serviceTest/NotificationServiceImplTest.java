@@ -76,7 +76,7 @@ public class NotificationServiceImplTest {
 		// Requirement: Use the professional HTML template logic
 		verify(emailService, times(1)).sendHtmlEmail(eq(emails), anyString(), // Extracted Username
 				anyString(), // Extracted Project Name
-				eq(true) // isApproved should be true based on the message string
+				eq("APPROVED") // emailType should be APPROVED based on the message string
 		);
 	}
 
@@ -91,7 +91,7 @@ public class NotificationServiceImplTest {
 		// Assert: DB and WebSockets should still fire, but Email should be skipped
 		verify(repository).save(any());
 		verify(messagingTemplate).convertAndSendToUser(anyString(), anyString(), any());
-		verify(emailService, never()).sendHtmlEmail(any(), anyString(), anyString(), anyBoolean());
+		verify(emailService, never()).sendHtmlEmail(any(), anyString(), anyString(), anyString());
 	}
 
 	@Test

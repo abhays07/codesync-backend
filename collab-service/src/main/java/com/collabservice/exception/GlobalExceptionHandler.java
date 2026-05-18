@@ -14,6 +14,14 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+	@ExceptionHandler(CollabException.class)
+	public ResponseEntity<Map<String, String>> handleCollabException(CollabException ex) {
+		Map<String, String> response = new HashMap<>();
+		response.put("message", ex.getMessage());
+		response.put("status", "error");
+		return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+	}
+
 	@ExceptionHandler(RuntimeException.class)
 	public ResponseEntity<Map<String, String>> handleRuntimeException(RuntimeException ex) {
 		Map<String, String> response = new HashMap<>();

@@ -81,7 +81,7 @@ services:
     environment:
       <<: *common-env
       FRONTEND_URL: ${FRONTEND_URL}
-      BACKEND_GATEWAY_URL: http://65.1.129.94.nip.io:9000/api/v1/auth
+      BACKEND_GATEWAY_URL: http://3.108.1.211.nip.io:9000/api/v1/auth
       JWT_SECRET: ${JWT_SECRET}
       EMAIL_USERNAME: ${EMAIL_USERNAME}
       EMAIL_APP_PASSWORD: "${EMAIL_APP_PASSWORD}"

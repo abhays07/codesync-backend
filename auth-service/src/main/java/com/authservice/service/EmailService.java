@@ -48,7 +48,7 @@ public class EmailService {
 				                <h3 style='margin-top:0;'>Hi %s,</h3>
 				                <div class='title'>Ready to build together?</div>
 				                <p class='msg'>We are absolutely thrilled to welcome you to CodeSync! Dive into a world of seamless real-time code collaboration, secure microservices architecture, and dynamic project mentorship. Your journey to build better software starts right here.</p>
-				                <a href='" + frontendUrl + "/dashboard' class='btn'>Explore Dashboard</a>
+				                <a href='%s/dashboard' class='btn'>Explore Dashboard</a>
 				            </div>
 				        </div>
 				        <div class='footer'>CodeSync Microservices Framework • Bhopal, India<br>You received this email because you registered a new account.</div>
@@ -56,7 +56,7 @@ public class EmailService {
 				</body>
 				</html>
 				"""
-				.formatted(username);
+				.formatted(username, frontendUrl);
 
 		try {
 			MimeMessage mimeMessage = mailSender.createMimeMessage();

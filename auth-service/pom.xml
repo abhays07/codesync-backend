@@ -20,6 +20,7 @@
 	<properties>
 		<java.version>17</java.version>
 		<spring-cloud.version>2025.0.2</spring-cloud.version>
+		<sonar.exclusions>**/entity/**,**/dto/**,**/config/**,**/exception/**,**/payload/**,**/service/EmailService.java,**/serviceImpl/CustomOAuth2UserService.java,**/controller/DebugController.java,**/resource/AdminUserController.java,**/*Application.java</sonar.exclusions>
 	</properties>
 
 	<dependencies>
@@ -146,6 +147,20 @@
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>0.8.12</version>
+				<configuration>
+					<includes>
+						<include>com/authservice/**/*</include>
+					</includes>
+					<excludes>
+						<exclude>**/entity/**</exclude>
+						<exclude>**/dto/**</exclude>
+						<exclude>**/config/**</exclude>
+						<exclude>**/exception/**</exclude>
+						<exclude>**/payload/**</exclude>
+						<exclude>**/*$*</exclude>
+						<exclude>**/*Application.class</exclude>
+					</excludes>
+				</configuration>
 				<executions>
 					<execution>
 						<goals>

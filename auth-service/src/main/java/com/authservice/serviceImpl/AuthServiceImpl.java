@@ -50,7 +50,7 @@ public class AuthServiceImpl implements AuthService {
 			throw new RuntimeException("Username already exists");
 		}
 
-		String otp = String.format("%06d", new java.util.Random().nextInt(999999));
+		String otp = String.format("%06d", new java.security.SecureRandom().nextInt(999999));
 		registrationOtps.put(email, otp);
 
 		new Thread(() -> emailService.sendOtpEmail(email, otp)).start();
@@ -165,7 +165,7 @@ public class AuthServiceImpl implements AuthService {
 				.orElseThrow(() -> new RuntimeException("User not found with this email"));
 
 		// Generate 6-digit OTP
-		String otp = String.format("%06d", new java.util.Random().nextInt(999999));
+		String otp = String.format("%06d", new java.security.SecureRandom().nextInt(999999));
 
 		user.setResetOtp(passwordEncoder.encode(otp));
 		user.setOtpExpiry(java.time.LocalDateTime.now().plusMinutes(15));

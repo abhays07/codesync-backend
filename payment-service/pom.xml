@@ -31,6 +31,7 @@
 		<java.version>17</java.version>
 		<spring-boot-admin.version>3.5.8</spring-boot-admin.version>
 		<spring-cloud.version>2025.0.2</spring-cloud.version>
+		<sonar.exclusions>**/entity/**,**/dto/**,**/config/**,**/exception/**,**/payload/**,**/*Application.java</sonar.exclusions>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -154,6 +155,7 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
+					<release>17</release>
 					<annotationProcessorPaths>
 						<path>
 							<groupId>org.projectlombok</groupId>
@@ -166,6 +168,16 @@
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>0.8.12</version>
+				<configuration>
+					<excludes>
+						<exclude>**/entity/**</exclude>
+						<exclude>**/dto/**</exclude>
+						<exclude>**/config/**</exclude>
+						<exclude>**/exception/**</exclude>
+						<exclude>**/payload/**</exclude>
+						<exclude>**/*Application.class</exclude>
+					</excludes>
+				</configuration>
 				<executions>
 					<execution>
 						<goals>
@@ -184,5 +196,6 @@
 			</plugins>
 	</build>
 </project>
+
 
 

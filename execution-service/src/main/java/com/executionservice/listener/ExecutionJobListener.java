@@ -44,35 +44,51 @@ public class ExecutionJobListener {
 					.withNetworkMode("none"); // Absolute Isolation
 
 			CreateContainerResponse container;
-			try {
-				container = dockerClient.createContainerCmd(image).withHostConfig(hostConfig)
-						.withCmd(getExecutionCommand(job.getLanguage(), job.getSourceCode())).exec();
+			try (var createCmd = dockerClient.createContainerCmd(image).withHostConfig(hostConfig)
+					.withCmd(getExecutionCommand(job.getLanguage(), job.getSourceCode()))) {
+				container = createCmd.exec();
 			} catch (com.github.dockerjava.api.exception.NotFoundException e) {
 				log.warn("Image {} not found locally (likely pruned). Pulling from Docker Hub...", image);
-				dockerClient.pullImageCmd(image).exec(new com.github.dockerjava.api.command.PullImageResultCallback()).awaitCompletion();
+				try (var pullCmd = dockerClient.pullImageCmd(image)) {
+					pullCmd.exec(new com.github.dockerjava.api.command.PullImageResultCallback()).awaitCompletion();
+				}
 				
 				// Retry creating the container now that the image is downloaded
-				container = dockerClient.createContainerCmd(image).withHostConfig(hostConfig)
-						.withCmd(getExecutionCommand(job.getLanguage(), job.getSourceCode())).exec();
+				try (var createCmdRetry = dockerClient.createContainerCmd(image).withHostConfig(hostConfig)
+						.withCmd(getExecutionCommand(job.getLanguage(), job.getSourceCode()))) {
+					container = createCmdRetry.exec();
+				}
 			}
 
 			containerId = container.getId();
-			dockerClient.startContainerCmd(containerId).exec();
+			try (var startCmd = dockerClient.startContainerCmd(containerId)) {
+				startCmd.exec();
+			}
 
 			// Timeout Enforcement: 10 seconds max execution time
-			WaitContainerResultCallback waitCallback = new WaitContainerResultCallback();
-			dockerClient.waitContainerCmd(containerId).exec(waitCallback);
-			boolean finished = waitCallback.awaitCompletion(10, TimeUnit.SECONDS);
+			boolean finished;
+			try (WaitContainerResultCallback waitCallback = new WaitContainerResultCallback();
+			     var waitCmd = dockerClient.waitContainerCmd(containerId)) {
+				waitCmd.exec(waitCallback);
+				finished = waitCallback.awaitCompletion(10, TimeUnit.SECONDS);
+			}
 
 			if (!finished) {
 				job.setStatus("TIMED_OUT");
 				job.setStderr("Execution Error: Code exceeded the 10-second safety limit.");
-				dockerClient.stopContainerCmd(containerId).exec();
+				try (var stopCmd = dockerClient.stopContainerCmd(containerId)) {
+					stopCmd.exec();
+				}
 			} else {
 				captureLogs(containerId, job);
 				job.setStatus("COMPLETED");
 			}
 
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			log.error("Execution interrupted for job {}: {}", jobId, e.getMessage());
+			job.setStatus("FAILED");
+			job.setStderr("Sandbox Error: Interrupted");
 		} catch (Exception e) {
 			log.error("Execution failure for job {}: {}", jobId, e.getMessage());
 			job.setStatus("FAILED");
@@ -86,8 +102,8 @@ public class ExecutionJobListener {
 		StringBuilder stdout = new StringBuilder();
 		StringBuilder stderr = new StringBuilder();
 
-		dockerClient.logContainerCmd(containerId).withStdOut(true).withStdErr(true).withFollowStream(true)
-				.exec(new ResultCallback.Adapter<Frame>() {
+		try (var logCmd = dockerClient.logContainerCmd(containerId).withStdOut(true).withStdErr(true).withFollowStream(true)) {
+			logCmd.exec(new ResultCallback.Adapter<Frame>() {
 					@Override
 					public void onNext(Frame frame) {
 						if ("STDOUT".equals(frame.getStreamType().name()))
@@ -96,6 +112,7 @@ public class ExecutionJobListener {
 							stderr.append(new String(frame.getPayload()));
 					}
 				}).awaitCompletion();
+		}
 
 		job.setStdout(stdout.toString());
 		job.setStderr(stderr.toString());
@@ -103,8 +120,8 @@ public class ExecutionJobListener {
 
 	private void cleanup(String containerId, ExecutionJob job, long startTime) {
 		if (containerId != null) {
-			try {
-				dockerClient.removeContainerCmd(containerId).withForce(true).exec();
+			try (var removeCmd = dockerClient.removeContainerCmd(containerId).withForce(true)) {
+				removeCmd.exec();
 			} catch (Exception e) {
 				log.warn("Resource Leak Warning: Could not remove container {}", containerId);
 			}

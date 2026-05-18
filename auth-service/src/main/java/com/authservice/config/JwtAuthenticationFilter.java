@@ -34,6 +34,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             try {
+                if (jwtSecret == null || jwtSecret.trim().isEmpty()) {
+                    throw new IllegalArgumentException("JWT Secret is not configured");
+                }
                 Claims claims = Jwts.parserBuilder()
                         .setSigningKey(jwtSecret.trim().getBytes(java.nio.charset.StandardCharsets.UTF_8))
                         .build()

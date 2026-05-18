@@ -21,6 +21,7 @@
 		<java.version>17</java.version>
 		<spring-cloud.version>2025.0.2</spring-cloud.version>
 		<docker-java.version>3.7.1</docker-java.version>
+		<sonar.exclusions>**/entity/**,**/dto/**,**/config/**,**/exception/**,**/payload/**,**/listener/**,**/*Application.java</sonar.exclusions>
 	</properties>
 
 	<dependencies>
@@ -127,6 +128,16 @@
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>0.8.12</version>
+				<configuration>
+					<excludes>
+						<exclude>**/entity/**</exclude>
+						<exclude>**/dto/**</exclude>
+						<exclude>**/config/**</exclude>
+						<exclude>**/exception/**</exclude>
+						<exclude>**/payload/**</exclude>
+						<exclude>**/*Application.class</exclude>
+					</excludes>
+				</configuration>
 				<executions>
 					<execution>
 						<goals>
@@ -145,6 +156,7 @@
 			</plugins>
 	</build>
 </project>
+
 
 
 

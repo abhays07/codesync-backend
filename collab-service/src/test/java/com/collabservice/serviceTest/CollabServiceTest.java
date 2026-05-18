@@ -26,7 +26,7 @@ import com.collabservice.serviceImpl.CollabServiceImpl;
  * synchronization, and participant presence.
  */
 @ExtendWith(MockitoExtension.class)
-public class CollabServiceTest {
+class CollabServiceTest {
 
 	@Mock
 	private CollabRepository collabRepo;
@@ -95,11 +95,24 @@ public class CollabServiceTest {
 
 		// Act & Assert: This ensures our GlobalExceptionHandler has a clear message to
 		// catch
-		RuntimeException ex = assertThrows(RuntimeException.class, () -> {
+		com.collabservice.exception.CollabException ex = assertThrows(com.collabservice.exception.CollabException.class, () -> {
 			collabService.joinSession("invalid-id", 1, "EDITOR");
 		});
 
 		assertTrue(ex.getMessage().contains("Session not found"), "Error message must be user-friendly for the UI");
+	}
+
+	@Test
+	void testJoinSession_SessionIdNull_ShouldThrowException() {
+		CollabSession nullIdSession = new CollabSession();
+		nullIdSession.setSessionId(null);
+		when(collabRepo.findById("session-uuid")).thenReturn(Optional.of(nullIdSession));
+
+		com.collabservice.exception.CollabException ex = assertThrows(com.collabservice.exception.CollabException.class, () -> {
+			collabService.joinSession("session-uuid", 1, "EDITOR");
+		});
+
+		assertTrue(ex.getMessage().contains("Invalid Session ID"));
 	}
 
 	@Test
@@ -134,5 +147,42 @@ public class CollabServiceTest {
 		assertEquals("ENDED", sampleSession.getStatus(), "Session status must update to ENDED");
 		assertNotNull(sampleSession.getEndedAt(), "endedAt timestamp must be populated on session closure");
 		verify(collabRepo).save(sampleSession);
+	}
+
+	@Test
+	void testLeaveSession_Success() {
+		doNothing().when(participantRepo).deleteBySessionIdAndUserId("session-uuid", 5);
+		assertDoesNotThrow(() -> collabService.leaveSession("session-uuid", 5));
+		verify(participantRepo, times(1)).deleteBySessionIdAndUserId("session-uuid", 5);
+	}
+
+	@Test
+	void testGetSessionsByProject_Success() {
+		List<CollabSession> list = List.of(sampleSession);
+		when(collabRepo.findByProjectId(101)).thenReturn(list);
+
+		List<CollabSession> res = collabService.getSessionsByProject(101);
+		assertEquals(1, res.size());
+	}
+
+	@Test
+	void testGetParticipants_Success() {
+		List<Participant> list = List.of(sampleParticipant);
+		when(participantRepo.findBySessionId("session-uuid")).thenReturn(list);
+
+		List<Participant> res = collabService.getParticipants("session-uuid");
+		assertEquals(1, res.size());
+	}
+
+	@Test
+	void testUpdateCursor_ParticipantNotFound_ShouldDoNothing() {
+		String sessionId = "session-uuid";
+		int userId = 99; // Different userId
+		List<Participant> participants = List.of(sampleParticipant);
+
+		when(participantRepo.findBySessionId(sessionId)).thenReturn(participants);
+
+		assertDoesNotThrow(() -> collabService.updateCursor(sessionId, userId, 15, 40));
+		verify(participantRepo, never()).save(any(Participant.class));
 	}
 }

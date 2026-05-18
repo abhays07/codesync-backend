@@ -34,8 +34,11 @@ public class CollabServiceImpl implements CollabService {
 	@Transactional
 	public Participant joinSession(String sessionId, int userId, String role) {
 		// Logic: Ensure session exists before joining
-		collabRepo.findById(sessionId)
-				.orElseThrow(() -> new RuntimeException("Join Failed: Session not found or expired"));
+		CollabSession session = collabRepo.findById(sessionId)
+				.orElseThrow(() -> new com.collabservice.exception.CollabException("Join Failed: Session not found or expired"));
+		if (session.getSessionId() == null) {
+			throw new com.collabservice.exception.CollabException("Join Failed: Invalid Session ID");
+		}
 
 		// Assign a rotating color based on current participant count
 		long count = participantRepo.countBySessionId(sessionId);

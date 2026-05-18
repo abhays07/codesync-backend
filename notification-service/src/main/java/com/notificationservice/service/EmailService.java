@@ -19,23 +19,43 @@ public class EmailService {
 	private String frontendUrl;
 
 	@Async("emailTaskExecutor")
-	public void sendHtmlEmail(List<String> recipients, String username, String projectName, boolean isApproved) {
+	public void sendHtmlEmail(List<String> recipients, String username, String projectName, String emailType) {
 		if (recipients == null || recipients.isEmpty())
 			return;
 
 		// 1. Internal Logic: Subject & Message generation
-		String subject = isApproved ? "✓ Access Granted: " + projectName : "✕ Update on your request: " + projectName;
+		boolean isApproved = "APPROVED".equals(emailType);
+		boolean isRequest = "REQUEST".equals(emailType);
 
-		String statusText = isApproved ? "Request Approved" : "Request Ignored";
-		String statusColor = isApproved ? "#22c55e" : "#ef4444"; // Green vs Red
-		String statusBg = isApproved ? "#f0fdf4" : "#fef2f2";
+		String subject;
+		String statusText;
+		String statusColor;
+		String statusBg;
+		String mainMessage;
+		String actionBtn;
 
-		String mainMessage = isApproved
-				? "Great news! Your request to collaborate has been accepted. You now have full access to the project workspace."
-				: "Thank you for your interest. Unfortunately, the project owner has declined your request to join at this time.";
-
-		String actionBtn = isApproved ? "<a href='" + frontendUrl + "/dashboard' class='btn'>Go to Workspace</a>"
-				: "<a href='" + frontendUrl + "/explore' class='btn-secondary'>View Other Projects</a>";
+		if (isApproved) {
+			subject = "✓ Access Granted: " + projectName;
+			statusText = "Request Approved";
+			statusColor = "#22c55e"; // Green
+			statusBg = "#f0fdf4";
+			mainMessage = "Great news! Your request to collaborate has been accepted. You now have full access to the project workspace.";
+			actionBtn = "<a href='" + frontendUrl + "/dashboard' class='btn'>Go to Workspace</a>";
+		} else if (isRequest) {
+			subject = "👋 New Collaboration Request: " + projectName;
+			statusText = "Action Required";
+			statusColor = "#f59e0b"; // Amber/Orange
+			statusBg = "#fffbeb";
+			mainMessage = username + " has requested to join your project workspace. Please review and respond to this request.";
+			actionBtn = "<a href='" + frontendUrl + "/dashboard' class='btn'>Review Request</a>";
+		} else {
+			subject = "✕ Update on your request: " + projectName;
+			statusText = "Request Declined";
+			statusColor = "#ef4444"; // Red
+			statusBg = "#fef2f2";
+			mainMessage = "Thank you for your interest. Unfortunately, the project owner has declined your request to join at this time.";
+			actionBtn = "<a href='" + frontendUrl + "/explore' class='btn-secondary'>View Other Projects</a>";
+		}
 
 		// 2. The Professional HTML Template
 		String htmlTemplate = """
