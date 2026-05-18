@@ -97,12 +97,12 @@ spring:
                               - Path=/api/v1/versions/**
 
                         - id: notification-ws
-                          uri: lb:ws://notification-service
+                          uri: lb://notification-service
                           predicates:
                               - Path=/ws-notifications/**
 
                         - id: collab-ws
-                          uri: lb:ws://collab-service
+                          uri: lb://collab-service
                           predicates:
                               - Path=/ws-collab/**
 

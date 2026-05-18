@@ -18,7 +18,9 @@ public class RouteValidator {
             "/eureka",
             "/v3/api-docs",
             "/swagger-ui",
-            "/actuator"
+            "/actuator",
+            "/ws-collab",
+            "/ws-notifications"
     );
 
     public Predicate<ServerHttpRequest> isSecured =
