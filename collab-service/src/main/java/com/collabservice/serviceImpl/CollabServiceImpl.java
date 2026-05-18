@@ -25,7 +25,7 @@ public class CollabServiceImpl implements CollabService {
 	@Transactional
 	public CollabSession createSession(CollabSession session) {
 		// Fix: Check if an active session already exists for this file
-		Optional<CollabSession> existingSession = collabRepo.findByFileIdAndStatus(session.getFileId(), "ACTIVE");
+		Optional<CollabSession> existingSession = collabRepo.findFirstByFileIdAndStatus(session.getFileId(), "ACTIVE");
 		if (existingSession.isPresent()) {
 			return existingSession.get();
 		}

@@ -12,7 +12,7 @@ import java.util.Optional;
 public interface CollabRepository extends JpaRepository<CollabSession, String> {
 	List<CollabSession> findByProjectId(int projectId);
 
-	Optional<CollabSession> findByFileIdAndStatus(int fileId, String status);
+	Optional<CollabSession> findFirstByFileIdAndStatus(int fileId, String status);
 
 	List<CollabSession> findByOwnerId(int ownerId);
 }
