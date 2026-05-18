@@ -24,6 +24,12 @@ public class CollabServiceImpl implements CollabService {
 	@Override
 	@Transactional
 	public CollabSession createSession(CollabSession session) {
+		// Fix: Check if an active session already exists for this file
+		Optional<CollabSession> existingSession = collabRepo.findByFileIdAndStatus(session.getFileId(), "ACTIVE");
+		if (existingSession.isPresent()) {
+			return existingSession.get();
+		}
+
 		session.setSessionId(UUID.randomUUID().toString());
 		session.setStatus("ACTIVE");
 		session.setCreatedAt(LocalDateTime.now());
@@ -38,6 +44,13 @@ public class CollabServiceImpl implements CollabService {
 				.orElseThrow(() -> new com.collabservice.exception.CollabException("Join Failed: Session not found or expired"));
 		if (session.getSessionId() == null) {
 			throw new com.collabservice.exception.CollabException("Join Failed: Invalid Session ID");
+		}
+
+		// Fix: Prevent duplicate participant entries if they reconnect
+		Optional<Participant> existing = participantRepo.findBySessionId(sessionId)
+				.stream().filter(p -> p.getUserId() == userId).findFirst();
+		if (existing.isPresent()) {
+			return existing.get();
 		}
 
 		// Assign a rotating color based on current participant count
