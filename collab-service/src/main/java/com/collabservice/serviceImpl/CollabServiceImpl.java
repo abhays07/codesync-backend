@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.collabservice.entity.*;
 import com.collabservice.repository.*;
 import com.collabservice.service.CollabService;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -17,6 +18,9 @@ public class CollabServiceImpl implements CollabService {
 
 	@Autowired
 	private ParticipantRepository participantRepo;
+
+	@Autowired
+	private SimpMessagingTemplate messagingTemplate;
 
 	// Vibrant colors for remote cursors in the editor
 	private final String[] COLORS = { "#F97316", "#06B6D4", "#8B5CF6", "#EC4899", "#10B981", "#EAB308" };
@@ -64,13 +68,25 @@ public class CollabServiceImpl implements CollabService {
 		participant.setColor(color);
 		participant.setJoinedAt(LocalDateTime.now());
 
-		return participantRepo.save(participant);
+		Participant savedParticipant = participantRepo.save(participant);
+
+		Map<String, Object> payload = new HashMap<>();
+		payload.put("type", "PARTICIPANT_JOIN");
+		payload.put("userId", userId);
+		messagingTemplate.convertAndSend("/topic/session/" + sessionId, payload);
+
+		return savedParticipant;
 	}
 
 	@Override
 	@Transactional
 	public void leaveSession(String sessionId, int userId) {
 		participantRepo.deleteBySessionIdAndUserId(sessionId, userId);
+		
+		Map<String, Object> payload = new HashMap<>();
+		payload.put("type", "PARTICIPANT_LEAVE");
+		payload.put("userId", userId);
+		messagingTemplate.convertAndSend("/topic/session/" + sessionId, payload);
 	}
 
 	@Override
@@ -82,6 +98,15 @@ public class CollabServiceImpl implements CollabService {
 					p.setCursorLine(line);
 					p.setCursorCol(col);
 					participantRepo.save(p);
+
+					Map<String, Object> payload = new HashMap<>();
+					payload.put("type", "CURSOR_UPDATE");
+					payload.put("userId", userId);
+					payload.put("line", line);
+					payload.put("col", col);
+					payload.put("username", p.getUsername());
+					payload.put("color", p.getColor());
+					messagingTemplate.convertAndSend("/topic/session/" + sessionId, payload);
 				});
 	}
 

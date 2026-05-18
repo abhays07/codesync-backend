@@ -20,6 +20,7 @@ import com.collabservice.entity.Participant;
 import com.collabservice.repository.CollabRepository;
 import com.collabservice.repository.ParticipantRepository;
 import com.collabservice.serviceImpl.CollabServiceImpl;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 /**
  * Unit Tests for Collab-Service. Focuses on session orchestration, cursor
@@ -33,6 +34,9 @@ class CollabServiceTest {
 
 	@Mock
 	private ParticipantRepository participantRepo;
+
+	@Mock
+	private SimpMessagingTemplate messagingTemplate;
 
 	@InjectMocks
 	private CollabServiceImpl collabService;
