@@ -19,6 +19,7 @@ services:
   eureka-server:
     image: abhays2004/codesync-eureka:latest
     container_name: eureka-server
+    restart: always
     ports:
       - "8761:8761"
     healthcheck:
@@ -26,18 +27,20 @@ services:
       interval: 15s
       timeout: 10s
       retries: 15
-      
       start_period: 30s
 
   rabbitmq:
     image: rabbitmq:3-management
     container_name: codesync-rabbitmq
+    restart: always
     ports:
       - "5672:5672"
       - "15672:15672"
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
       interval: 15s
@@ -49,6 +52,7 @@ services:
   api-gateway:
     image: abhays2004/codesync-gateway:latest
     container_name: api-gateway
+    restart: always
     ports:
       - "9000:9000"
     environment:
@@ -62,6 +66,7 @@ services:
   admin-server:
     image: abhays2004/codesync-admin:latest
     container_name: admin-server
+    restart: always
     ports:
       - "9090:9090"
     environment:
@@ -76,6 +81,7 @@ services:
   auth-service:
     image: abhays2004/codesync-auth:latest
     container_name: auth-service
+    restart: always
     ports:
       - "8081:8081"
     environment:
@@ -96,6 +102,7 @@ services:
   project-service:
     image: abhays2004/codesync-project:latest
     container_name: project-service
+    restart: always
     ports:
       - "8082:8082"
     environment:
@@ -107,6 +114,7 @@ services:
   file-service:
     image: abhays2004/codesync-file:latest
     container_name: file-service
+    restart: always
     ports:
       - "8083:8083"
     environment:
@@ -118,6 +126,7 @@ services:
   collab-service:
     image: abhays2004/codesync-collab:latest
     container_name: collab-service
+    restart: always
     ports:
       - "8084:8084"
     environment:
@@ -129,6 +138,7 @@ services:
   execution-service:
     image: abhays2004/codesync-execution:latest
     container_name: execution-service
+    restart: always
     ports:
       - "8085:8085"
     environment:
@@ -146,6 +156,7 @@ services:
   comment-service:
     image: abhays2004/codesync-comment:latest
     container_name: comment-service
+    restart: always
     ports:
       - "8086:8086"
     environment:
@@ -157,6 +168,7 @@ services:
   notification-service:
     image: abhays2004/codesync-notification:latest
     container_name: notification-service
+    restart: always
     ports:
       - "8087:8087"
     environment:
@@ -172,6 +184,7 @@ services:
   version-service:
     image: abhays2004/codesync-version:latest
     container_name: version-service
+    restart: always
     ports:
       - "8088:8088"
     environment:
@@ -183,6 +196,7 @@ services:
   payment-service:
     image: abhays2004/codesync-payment:latest
     container_name: payment-service
+    restart: always
     ports:
       - "8089:8089"
     environment:
@@ -195,6 +209,9 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+
+volumes:
+  rabbitmq_data:
 
 networks:
   default:

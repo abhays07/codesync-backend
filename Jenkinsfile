@@ -188,12 +188,8 @@ pipeline {
                             """
                         }
                         
-                        if (env.SELECTED_SERVICE == 'all') {
-                            sh "docker-compose -p codesync up -d"
-                        } else {
-                            def composeServices = servicesToBuild.join(' ')
-                            sh "docker-compose -p codesync up -d --no-deps ${composeServices}"
-                        }
+                        def composeServices = servicesToBuild.join(' ')
+                        sh "docker-compose -p codesync up -d --no-deps ${composeServices}"
                         sh "docker image prune -f"
                     }
                 }
